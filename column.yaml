@@ -8,7 +8,7 @@ esphome:
    then:
       - uart.write: 
           id: debug
-          data: "column v1.0.0.1\r\n"
+          data: "column v1.0.0.2\r\n"
       - lambda: |-
           memset(id(my_uart_recv_buf), 0x00, sizeof(id(my_uart_recv_buf)));
           id(my_uart_recv_read) = 0;
