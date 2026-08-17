@@ -1,0 +1,11 @@
+# ESPHome 构建产物
+.esphome/
+build/
+
+# 编译输出
+*.bin
+*.elf
+*.map
+
+# 临时调试日志
+column-install.txt
