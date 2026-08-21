@@ -4,7 +4,7 @@ external_components:
     components: [i2c_eeprom]
 
 substitutions:
-  DEV_FIRMWARE_VER: "v3-1.0.3-2026.4.11"
+  DEV_FIRMWARE_VER: "3-1.0.3-2026.8.21"
   MAX_UART_RECV_BUF_LEN: "254"
   MAX_UART_SEND_BUF_LEN: "254"
   MAX_SLAVE_NUM: "100"
