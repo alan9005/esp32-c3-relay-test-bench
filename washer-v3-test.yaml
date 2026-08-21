@@ -80,7 +80,6 @@ ota:
   - platform: esphome
     password: "f214a13cc04c52ae96d1acea40fc94fd"
   - platform: web_server
-    password: "f214a13cc04c52ae96d1acea40fc94fd"
 
 ethernet:
   type: W5500
