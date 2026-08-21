@@ -1083,7 +1083,7 @@ binary_sensor:
                 aucTempBuf[4] = 0x85;
                 aucTempBuf[5] = 0x4b;
                 aucTempBuf[6] = 0xdf;
-                uart_write_bytes(2, aucTempBuf, 7);
+                uart_write_bytes((uart_port_t) 2, aucTempBuf, 7);
           else:
             - lambda: |-
                 if (id(my_hmi_page_index) == 0) {
@@ -1173,7 +1173,7 @@ script:
             {0xfd, 0x03, 0xc7, 0x50, 0x90, 0x3c, 0xdf}
           };
           if ((cmd_num >= 1) && (cmd_num <= 10)) {
-            uart_write_bytes(2, aucCmdTable[cmd_num-1], 7);
+            uart_write_bytes((uart_port_t) 2, aucCmdTable[cmd_num-1], 7);
             ESP_LOGI("WASHER", "TX> %02X %02X %02X %02X %02X %02X %02X [%s %s x1]",
               aucCmdTable[cmd_num-1][0], aucCmdTable[cmd_num-1][1], aucCmdTable[cmd_num-1][2],
               aucCmdTable[cmd_num-1][3], aucCmdTable[cmd_num-1][4], aucCmdTable[cmd_num-1][5],
@@ -1194,7 +1194,7 @@ script:
             {0xfd, 0x03, 0xc7, 0x50, 0x90, 0x3c, 0xdf}
           };
           if ((cmd_num >= 1) && (cmd_num <= 10)) {
-            uart_write_bytes(2, aucCmdTable[cmd_num-1], 7);
+            uart_write_bytes((uart_port_t) 2, aucCmdTable[cmd_num-1], 7);
           }
       - delay: 100ms
       - lambda: |-
@@ -1211,7 +1211,7 @@ script:
             {0xfd, 0x03, 0xc7, 0x50, 0x90, 0x3c, 0xdf}
           };
           if ((cmd_num >= 1) && (cmd_num <= 10)) {
-            uart_write_bytes(2, aucCmdTable[cmd_num-1], 7);
+            uart_write_bytes((uart_port_t) 2, aucCmdTable[cmd_num-1], 7);
           }
       - delay: 100ms
       - lambda: |-
@@ -1228,7 +1228,7 @@ script:
             {0xfd, 0x03, 0xc7, 0x50, 0x90, 0x3c, 0xdf}
           };
           if ((cmd_num >= 1) && (cmd_num <= 10)) {
-            uart_write_bytes(2, aucCmdTable[cmd_num-1], 7);
+            uart_write_bytes((uart_port_t) 2, aucCmdTable[cmd_num-1], 7);
           }
       - delay: 100ms
       - lambda: |-
@@ -1245,7 +1245,7 @@ script:
             {0xfd, 0x03, 0xc7, 0x50, 0x90, 0x3c, 0xdf}
           };
           if ((cmd_num >= 1) && (cmd_num <= 10)) {
-            uart_write_bytes(2, aucCmdTable[cmd_num-1], 7);
+            uart_write_bytes((uart_port_t) 2, aucCmdTable[cmd_num-1], 7);
             ESP_LOGI("WASHER", "TX> %02X %02X %02X %02X %02X %02X %02X [%s %s x5]",
               aucCmdTable[cmd_num-1][0], aucCmdTable[cmd_num-1][1], aucCmdTable[cmd_num-1][2],
               aucCmdTable[cmd_num-1][3], aucCmdTable[cmd_num-1][4], aucCmdTable[cmd_num-1][5],
@@ -1278,7 +1278,7 @@ script:
           aucTempBuf[11] = 0x33;
           aucTempBuf[12] = 0xc3;
           aucTempBuf[13] = 0x3c;
-          uart_write_bytes(0, aucTempBuf, 14);
+          uart_write_bytes((uart_port_t) 0, aucTempBuf, 14);
 
   - id: hmi_show_page1_icon
     parameters:
@@ -1306,7 +1306,7 @@ script:
           aucTempBuf[11] = 0x33;
           aucTempBuf[12] = 0xc3;
           aucTempBuf[13] = 0x3c;
-          uart_write_bytes(0, aucTempBuf, 14);
+          uart_write_bytes((uart_port_t) 0, aucTempBuf, 14);
 
   - id: hmi_show_page
     parameters:
@@ -1316,7 +1316,7 @@ script:
       - lambda: |-
           unsigned char aucTempBuf[7] = {0xaa, 0x70, 0x00, 0xcc, 0x33, 0xc3, 0x3c};
           aucTempBuf[2] = page & 0xff;
-          uart_write_bytes(0, aucTempBuf, sizeof(aucTempBuf));
+          uart_write_bytes((uart_port_t) 0, aucTempBuf, sizeof(aucTempBuf));
           ESP_LOGE("main", "show page [%d]", page);
 
   - id: hmi_show_clear_all
@@ -1324,7 +1324,7 @@ script:
     then:
       - lambda: |-
           unsigned char aucTempBuf[6] = {0xaa, 0x52, 0xcc, 0x33, 0xc3, 0x3c};
-          uart_write_bytes(0, aucTempBuf, sizeof(aucTempBuf));
+          uart_write_bytes((uart_port_t) 0, aucTempBuf, sizeof(aucTempBuf));
           ESP_LOGE("main", "show page clear all");
 
   - id: hmi_show_param_value
@@ -1342,9 +1342,9 @@ script:
           aucHeadBuf[3] = pos_x & 0xff;
           aucHeadBuf[4] = pos_y >> 8;
           aucHeadBuf[5] = pos_y & 0xff;
-          uart_write_bytes(0, aucHeadBuf, sizeof(aucHeadBuf));
-          uart_write_bytes(0, value.c_str(), value.length());
-          uart_write_bytes(0, aucTailBuf, sizeof(aucTailBuf));
+          uart_write_bytes((uart_port_t) 0, aucHeadBuf, sizeof(aucHeadBuf));
+          uart_write_bytes((uart_port_t) 0, value.c_str(), value.length());
+          uart_write_bytes((uart_port_t) 0, aucTailBuf, sizeof(aucTailBuf));
 
   - id: hmi_1_show_param_value
     parameters:
@@ -1361,16 +1361,16 @@ script:
           aucHeadBuf[3] = pos_x & 0xff;
           aucHeadBuf[4] = pos_y >> 8;
           aucHeadBuf[5] = pos_y & 0xff;
-          uart_write_bytes(0, aucHeadBuf, sizeof(aucHeadBuf));
-          uart_write_bytes(0, value.c_str(), value.length());
-          uart_write_bytes(0, aucTailBuf, sizeof(aucTailBuf));
+          uart_write_bytes((uart_port_t) 0, aucHeadBuf, sizeof(aucHeadBuf));
+          uart_write_bytes((uart_port_t) 0, value.c_str(), value.length());
+          uart_write_bytes((uart_port_t) 0, aucTailBuf, sizeof(aucTailBuf));
 
   - id: hmi_clear_user_code
     mode: single
     then:
       - lambda: |-
           unsigned char aucTempBuf[19] = {0xAA, 0x71, 0x01, 0x00, 0xB6, 0x00, 0x9B, 0x02, 0x0B, 0x00, 0xF6, 0x00, 0xB6, 0x00, 0x9B, 0xCC, 0x33, 0xC3, 0x3C};
-          uart_write_bytes(0, aucTempBuf, sizeof(aucTempBuf));
+          uart_write_bytes((uart_port_t) 0, aucTempBuf, sizeof(aucTempBuf));
           //ESP_LOGE("main", "clear user code");
 
   - id: hmi_clear_pass_err
@@ -1378,7 +1378,7 @@ script:
     then:
       - lambda: |-
           unsigned char aucTempBuf[19] = {0xAA, 0x71, 0x01, 0x02, 0x58, 0x00, 0xC8, 0x03, 0x4A, 0x01, 0x2C, 0x02, 0x58, 0x00, 0xC8, 0xCC, 0x33, 0xC3, 0x3C};
-          uart_write_bytes(0, aucTempBuf, sizeof(aucTempBuf));
+          uart_write_bytes((uart_port_t) 0, aucTempBuf, sizeof(aucTempBuf));
           //ESP_LOGE("main", "clear user code");
 
   - id: hmi_show_user_code
@@ -1403,7 +1403,7 @@ script:
           {
             aucHeadBuf[13] = value;
           }
-          uart_write_bytes(0, aucHeadBuf, sizeof(aucHeadBuf));
+          uart_write_bytes((uart_port_t) 0, aucHeadBuf, sizeof(aucHeadBuf));
           //ESP_LOGE("main", "show param[%s][%d] to [%d, %d]", value.c_str(), value.length(), pos_x, pos_y);
 
   - id: hmi_show_param_name
@@ -1472,11 +1472,11 @@ script:
                                               0x20, 0x20, 0x20, 0xE9, 0x6C, 0xE9, 0x54, 0x99, 0x43, 0x20, 0x20, 0x20, 0x20, 0x20, 0x20, 0x20, 0x20, 0x20, 0xCA, 0xD2, \
                                               0x83, 0xC8, 0x9F, 0xF4, 0x31, 0x20, 0xCA, 0xD2, 0x83, 0xC8, 0x9F, 0xF4, 0x32, 0xCC, 0x33, 0xC3, 0x3C};
 
-          uart_write_bytes(0, aucName_1, sizeof(aucName_1));
+          uart_write_bytes((uart_port_t) 0, aucName_1, sizeof(aucName_1));
           delay(1);
-          uart_write_bytes(0, aucName_2, sizeof(aucName_2));
+          uart_write_bytes((uart_port_t) 0, aucName_2, sizeof(aucName_2));
           delay(1);
-          uart_write_bytes(0, aucName_3, sizeof(aucName_3));
+          uart_write_bytes((uart_port_t) 0, aucName_3, sizeof(aucName_3));
           delay(1);
           uart_write_bytes(0, aucName_4, sizeof(aucName_4));
           delay(1);
