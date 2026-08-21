@@ -1508,7 +1508,7 @@ script:
           delay(1);
           //uart_write_bytes(0, aucName_51, sizeof(aucName_51));
           //delay(1);
-          uart_write_bytes(0, aucName_52, sizeof(aucName_52));
+          uart_write_bytes((uart_port_t) 0, aucName_52, sizeof(aucName_52));
           delay(1);
           uart_write_bytes(0, aucName_53, sizeof(aucName_53));
           delay(1);
