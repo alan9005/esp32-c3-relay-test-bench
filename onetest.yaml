@@ -1,0 +1,32 @@
+esphome:
+  name: onetest
+  friendly_name: oneTest
+
+esp32:
+  board: esp32-s3-devkitc-1
+  framework:
+    type: esp-idf
+
+# Enable logging
+logger:
+
+# Enable Home Assistant API
+api:
+  encryption:
+    key: "K4Ni7pwHOLl3dhNSIJqTK0kuT1DTIffB0sRggn3B/MM="
+
+ota:
+  - platform: esphome
+    password: "0a90451bdf14812aab299d48f08fdc26"
+
+wifi:
+  ssid: !secret wifi_ssid
+  password: !secret wifi_password
+
+  # Enable fallback hotspot (captive portal) in case wifi connection fails
+  ap:
+    ssid: "Onetest Fallback Hotspot"
+    password: "WSQxBNFS0cDz"
+
+captive_portal:
+    
