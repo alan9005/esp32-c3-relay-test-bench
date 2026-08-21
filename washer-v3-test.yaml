@@ -1525,7 +1525,7 @@ script:
           uart_write_bytes((uart_port_t) 0, aucName_59, sizeof(aucName_59));
           delay(1);
 
-          uart_write_bytes(0, aucName_100, sizeof(aucName_100));
+          uart_write_bytes((uart_port_t) 0, aucName_100, sizeof(aucName_100));
           delay(2);
           //ESP_LOGI("main", "show param name");
 
@@ -1540,7 +1540,7 @@ script:
           unsigned char aucData[2];
           int iRecvCnt;
           unsigned char aucTempBuf[${MAX_UART_RECV_BUF_LEN}];
-          int iLength = uart_read_bytes(0, aucData, 1, 0);
+          int iLength = uart_read_bytes((uart_port_t) 0, aucData, 1, 0);
           if ( iLength > 0 )
           {
             id(my_uart_recv_delay) = 0;
