@@ -593,14 +593,14 @@ switch:
       number: GPIO6
       mode:
         output: true
-    id: ext_reset_out
-    name: "外部复位"
+    id: raspberry_pi_reset
+    name: "树莓派复位"
     icon: "mdi:restart"
     restore_mode: ALWAYS_OFF
     on_turn_on:
       then:
         - delay: 500ms
-        - switch.turn_off: ext_reset_out
+        - switch.turn_off: raspberry_pi_reset
 
   - platform: modbus_controller
     modbus_controller_id: modbus_device_relay
