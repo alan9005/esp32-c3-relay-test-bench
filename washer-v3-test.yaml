@@ -409,6 +409,7 @@ sensor:
     pin: GPIO4
     name: "DC power voltage"
     update_interval: 6s
+    attenuation: 11db
     filters:
       - multiply: 11
 
