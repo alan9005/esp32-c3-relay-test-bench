@@ -1484,9 +1484,9 @@ script:
           delay(1);
           uart_write_bytes((uart_port_t) 0, aucName_6, sizeof(aucName_6));
           delay(1);
-          uart_write_bytes(0, aucName_7, sizeof(aucName_7));
+          uart_write_bytes((uart_port_t) 0, aucName_7, sizeof(aucName_7));
           delay(1);
-          uart_write_bytes(0, aucName_8, sizeof(aucName_8));
+          uart_write_bytes((uart_port_t) 0, aucName_8, sizeof(aucName_8));
           delay(1);
           uart_write_bytes(0, aucName_9, sizeof(aucName_9));
           delay(1);
