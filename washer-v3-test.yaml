@@ -1,0 +1,1729 @@
+#适配电箱控制板硬件 2026-24
+external_components:
+  - source: my_components
+    components: [i2c_eeprom]
+
+substitutions:
+  DEV_FIRMWARE_VER: "3-1.0.3-2026.8.20"
+  MAX_UART_RECV_BUF_LEN: "254"
+  MAX_UART_SEND_BUF_LEN: "254"
+  MAX_SLAVE_NUM: "100"
+  DEV_ID_LENGTH: "5"
+  USER_CODE_LENGTH: "4"
+
+esphome:
+  name: washer-v3-test
+  friendly_name: washer-v3-test
+  on_boot:
+   priority: 200
+
+   then:
+      - lambda: |-
+          ESP_LOGI("INIT", "首次上电初始化");
+          id(my_hmi_page_index) = 1;
+          id(hmi_show_clear_all).execute();
+          delay(2);
+          id(hmi_show_page).execute(id(my_hmi_page_index));
+          delay(2);
+          static switch_::Switch* all_relays[] = {
+            id(relay_01), id(relay_02), id(relay_03), id(relay_04), id(relay_05), id(relay_06), id(relay_07), id(relay_08),
+            id(relay_09), id(relay_10), id(relay_11), id(relay_12), id(relay_13), id(relay_14), id(relay_15), id(relay_16)
+          };
+          for ( int iIndex=0; iIndex<16; iIndex++ )
+          {
+            all_relays[iIndex]->turn_off();
+            delay(1);
+          }
+          for ( int iLoop=0; iLoop<${USER_CODE_LENGTH}; iLoop++)
+          {
+            id(my_user_code_buf)[iLoop] = ' ';
+          }
+          ESP_LOGI("INIT", "关闭所有继电器");
+
+  on_loop:
+    then:
+      - script.execute: uart_proc_hex
+
+esp32:
+  board: esp32-s3-devkitc-1
+  framework:
+    type: arduino
+
+psram:
+  mode: quad
+  speed: 40MHz
+
+# Enable logging
+logger:
+#  level: VERBOSE
+#  logs:
+#    mqtt.component: VERBOSE
+#    mqtt.client: VERBOSE
+
+# Enable Home Assistant API
+#api:
+#  encryption:
+#    key: "DVfl8Atz+LlVI2B2DP1A5I3ZlZBsjcAQkyGwEQZxcTg="
+#wifi:
+#  ssid: !secret wifi_ssid
+#  password: !secret wifi_password
+
+  # Enable fallback hotspot (captive portal) in case wifi connection fails
+#  ap:
+#    ssid: "washer Fallback Hotspot"
+#    password: "12345678"
+
+safe_mode:
+  disabled: true
+
+ota:
+  - platform: esphome
+    password: "f214a13cc04c52ae96d1acea40fc94fd"
+
+ethernet:
+  type: W5500
+  clock_speed: 16M
+  clk_pin: GPIO13
+  mosi_pin: GPIO11
+  miso_pin: GPIO12
+  cs_pin: GPIO14
+  interrupt_pin: GPIO10
+  reset_pin: GPIO9
+  manual_ip: 
+    static_ip: 192.168.1.18
+    gateway: 192.168.1.1
+    subnet: 255.255.255.0
+    dns1: 192.168.1.1
+
+interval:
+  - interval: 1s
+    then:
+      - lambda: |-
+          if ( id(my_uart_recv_delay) < 60000 )
+          {
+            id(my_uart_recv_delay)++;
+          }
+
+          if ( id(my_wash_running_flag) == 1 )
+          {
+            id(my_wash_timer)++;
+          }
+
+          if ( id(my_page_init_flag) == 1 )
+          {
+            id(my_page_init_flag) = 255;
+            id(my_hmi_page_index) = 1;
+            id(hmi_show_clear_all).execute();
+            delay(2);
+            id(hmi_show_page).execute(id(my_hmi_page_index));
+            delay(2);
+          }
+          else if ( id(my_page_init_flag) == 0 )
+          {
+            id(my_page_init_flag) = 255;
+            id(my_hmi_page_index) = 0;
+            id(hmi_show_clear_all).execute();
+            delay(2);
+            id(hmi_show_page).execute(id(my_hmi_page_index));
+            delay(2);
+            id(hmi_show_relay_icon).execute(960, 0, 0x3c);  //返回图标
+            id(hmi_show_relay_icon).execute(960, 83, 0x3d);
+            id(hmi_show_relay_icon).execute(960, 169, 0x3f);  //OTA更新图标
+            static switch_::Switch* all_relays[] = {
+              id(relay_01), id(relay_02), id(relay_03), id(relay_04), id(relay_05), id(relay_06), id(relay_07), id(relay_08),
+              id(relay_09), id(relay_10), id(relay_11), id(relay_12), id(relay_13), id(relay_14), id(relay_15), id(relay_16)
+            };
+            for ( int iIndex=0; iIndex<16; iIndex++ )
+            {
+              if ( all_relays[iIndex]->state )
+              {
+                id(hmi_show_relay_icon).execute(iIndex * 64, 541, iIndex + 0x11);
+              }
+              else
+              {
+                id(hmi_show_relay_icon).execute(iIndex * 64, 541, iIndex + 0x01);
+              }
+            }
+            for ( int iIndex=0; iIndex<8; iIndex++ )
+            {
+              id(hmi_show_relay_icon).execute(512 + iIndex * 0x40, 375, 0x29 + iIndex);
+            }
+            id(hmi_show_relay_icon).execute(512 - 2 * 0x40, 375, 0x40);
+            id(hmi_show_relay_icon).execute(512 - 1 * 0x40, 375, 0x41);
+            id(hmi_show_relay_icon).execute(512 + 1 * 0x40, 458, 0x42);
+            id(hmi_show_relay_icon).execute(512 + 2 * 0x40, 458, 0x43);
+            id(hmi_show_relay_icon).execute(512 + 3 * 0x40, 458, 0x44);
+            id(hmi_show_param_name).execute();
+            char boot_buf[80];
+            const char *sid = id(my_global_id).c_str();
+            if (sid[0] != '\0') {
+              snprintf(boot_buf, sizeof(boot_buf), "%s v${DEV_FIRMWARE_VER}(%uKB)",
+                sid, esp_get_free_heap_size() / 1024);
+            } else {
+              snprintf(boot_buf, sizeof(boot_buf), "v${DEV_FIRMWARE_VER}(%uKB)",
+                esp_get_free_heap_size() / 1024);
+            }
+            id(hmi_show_param_value).execute(220, 0, std::string(boot_buf));
+            id(hmi_show_param_value).execute(220, 32,  id(ac_power_lose).state      ? " ON" : "OFF");
+            id(hmi_show_param_value).execute(220, 64,  id(leak_det).state            ? " ON" : "OFF");
+            id(hmi_show_param_value).execute(220, 96,  id(water_level_1).state       ? " ON" : "OFF");
+            id(hmi_show_param_value).execute(220, 128, id(water_level_2).state       ? " ON" : "OFF");
+            id(hmi_show_param_value).execute(220, 160, id(emgr_input).state          ? " ON" : "OFF");
+            id(hmi_show_param_value).execute(220, 192, id(start_stop_input).state    ? " ON" : "OFF");
+            id(hmi_show_param_value).execute(220, 224, id(car_high_input).state      ? " ON" : "OFF");
+            id(hmi_show_param_value).execute(220, 256, id(check_door_input).state    ? " ON" : "OFF");
+            id(hmi_show_param_value).execute(220, 288, id(washer_led_b).state        ? " ON" : "OFF");
+            id(hmi_show_param_value).execute(220, 320, id(washer_led_g).state        ? " ON" : "OFF");
+            id(hmi_show_param_value).execute(220, 352, id(washer_led_r).state        ? " ON" : "OFF");
+            id(hmi_show_param_value).execute(220, 384, id(check_babble_input_1).state ? " ON" : "OFF");
+          }
+
+  - interval: 2s
+    then:
+      - lambda: |-
+          unsigned long secs = id(system_uptime).state;
+          unsigned long days = secs / 86400;
+          unsigned long hours = (secs % 86400) / 3600;
+          unsigned long minutes = (secs % 3600) / 60;
+          unsigned long seconds = secs % 60;
+          std::string result;
+          if (id(my_hmi_page_index) == 0) {
+            if (days > 0) {
+              result = to_string(days) + "d " + to_string(hours) + "h" + to_string(minutes) + "m" + to_string(seconds) + "s";
+            } else if (hours > 0) {
+              result = to_string(hours) + "h" + to_string(minutes) + "m" + to_string(seconds) + "s";
+            } else if (minutes > 0) {
+              result = to_string(minutes) + "m" + to_string(seconds) + "s";
+            } else {
+              result = to_string(seconds) + "s";
+            }
+            result.insert(0, 12 - result.length(), ' ');
+            id(hmi_show_param_value).execute(220 + 512, 0, result);
+          }
+          else if (id(my_hmi_page_index) == 1) {
+            if (id(my_wash_running_flag) == 1) {
+              std::string msg;
+              msg += (char)0xD5; msg += (char)0xFD;
+              msg += (char)0xD4; msg += (char)0xDA;
+              msg += (char)0xCF; msg += (char)0xB4;
+              msg += (char)0xB3; msg += (char)0xB5;
+              msg += ": ";
+              msg += to_string(id(my_wash_timer));
+              id(hmi_1_show_param_value).execute(600, 200, msg);
+            }
+          }
+
+  - interval: 6s
+    then:
+      - uart.write:
+          id: uart_2
+          data: 'hello\r\n'
+
+web_server:
+  local: true 
+
+text_sensor:
+  - platform: template
+    name: "00-serial"
+    id: read_only_numbers
+    lambda: |-
+      int i;
+      for (i=0; i<$DEV_ID_LENGTH; i++)
+      {
+        if ( (id(my_global_id).c_str()[i] < '0') || (id(my_global_id).c_str()[i] > '9') )
+          break;
+      }
+      if ( i == $DEV_ID_LENGTH )
+      {
+        auto call = id(light_rgb_id).turn_on();
+        // set parameters (optional)
+        call.set_brightness(0.5); // 1.0 is full brightness
+        call.set_rgb(0, 1, 0);
+        // perform action:
+        call.perform();
+      }
+      else
+      {
+        auto call = id(light_rgb_id).turn_on();
+        // set parameters (optional)
+        call.set_brightness(0.5); // 1.0 is full brightness
+        call.set_rgb(1, 0, 0);
+        // perform action:
+        call.perform();
+      }
+      return id(my_global_id);
+
+globals:
+    - id: my_global_id
+      type: std::string
+      restore_value: no
+      max_restore_data_length: 10
+    - id: my_uart_recv_buf
+      type: unsigned char[${MAX_UART_RECV_BUF_LEN}]
+      restore_value: no
+    - id: my_uart_recv_read
+      type: int
+      restore_value: no
+    - id: my_uart_recv_write
+      type: int
+      restore_value: no
+    - id: my_uart_recv_delay
+      type: int
+      restore_value: no
+    - id: my_mqtt_conn_flag
+      type: int
+      restore_value: no
+      initial_value: '0'
+    - id: my_hmi_page_index
+      type: int
+      restore_value: no
+      initial_value: '1'
+    - id: my_user_code_buf
+      type: unsigned char[${USER_CODE_LENGTH}]
+      restore_value: no
+    - id: my_user_code_cnt
+      type: int
+      restore_value: no
+      initial_value: '0'
+    - id: my_page_init_flag
+      type: int
+      restore_value: no
+      initial_value: '0'
+    - id: my_wash_timer
+      type: int
+      restore_value: no
+      initial_value: '0'
+    - id: my_wash_running_flag
+      type: int
+      restore_value: no
+      initial_value: '0'
+
+i2c_eeprom:
+  - id: eeprom_1
+    size: 32KB
+    i2c_id: iic_bus
+    address: 0x50
+    on_setup:
+      then:
+        - lambda: |-
+            uint8_t prev_state[9];
+            int i;
+            memset(prev_state, 0x00, sizeof(prev_state));
+            if(!eeprom_1->get(0x0001, prev_state, sizeof(prev_state)-1)){
+              ESP_LOGE("eeprom","Reading prev");
+              return;
+            }
+            ESP_LOGD("eeprom","Prev 0x%02X, 0x%02X", prev_state[0], prev_state[1]);
+            for (i=0; i<$DEV_ID_LENGTH; i++)
+            {
+              if ( (prev_state[i] < '0') || (prev_state[i] > '9') )
+                break;
+            }
+            if ( i == $DEV_ID_LENGTH )
+            {
+              id(my_global_id).clear();
+              id(my_global_id) += (char *)&prev_state[0];
+            }
+            ESP_LOGI("main", "board id %s", id(my_global_id).c_str());
+
+i2c:
+  sda: GPIO41
+  scl: GPIO42
+  id: iic_bus
+  frequency: 200kHz
+
+uart:
+  - id: uart_debug
+    tx_pin: GPIO43
+    rx_pin:
+      number: GPIO44
+      mode:
+        input: true
+        pullup: true 
+    baud_rate: 115200
+  - id: uart_1
+    tx_pin: GPIO1
+    rx_pin:
+      number: GPIO2
+      mode:
+        input: true
+        pullup: true 
+    baud_rate: 9600
+  - id: uart_2
+    tx_pin:
+      number: GPIO20
+      mode:
+        output: True
+        pullup: true 
+    rx_pin:
+      number: GPIO19
+      mode:
+        input: true
+        pullup: true 
+    baud_rate: 9600
+
+modbus:
+  - uart_id: uart_1
+    id: modbus_1
+
+modbus_controller:
+#  - id: modbus_device_shui_liu
+#    address: 1
+#    modbus_id: modbus_1
+#    setup_priority: -105
+#    update_interval: 10s
+
+  - id: modbus_device_dian_liu
+    address: 10
+    modbus_id: modbus_1
+    setup_priority: -5
+    update_interval: 9s
+
+  - id: modbus_device_relay
+    address: 100
+    modbus_id: modbus_1
+    setup_priority: -5
+    update_interval: 15s
+
+  - id: modbus_device_presssion_1
+    address: 11
+    modbus_id: modbus_1
+    setup_priority: -5
+    update_interval: 7s
+
+  - id: modbus_device_presssion_2
+    address: 12
+    modbus_id: modbus_1
+    setup_priority: -5
+    update_interval: 6s
+
+sensor:
+  - platform: uptime
+    id: system_uptime
+    name: "System Uptime"
+    type: seconds
+    update_interval: 3s
+
+  - platform: adc
+    pin: GPIO4
+    name: "DC power voltage"
+    update_interval: 6s
+    filters:
+      - multiply: 11
+
+  - platform: pulse_counter
+    pin: GPIO36
+    id: fan_tachometer
+    unit_of_measurement: "RPM"
+    name: "105-风扇转速"
+    internal_filter: 13us
+    count_mode:
+      rising_edge: INCREMENT
+      falling_edge: DISABLE 
+    update_interval: 10s
+    filters:
+      - multiply: 0.5
+    on_value:
+      - lambda: |-
+          if (id(my_hmi_page_index) == 0) {
+            char buf[20];
+            snprintf(buf, sizeof(buf),"%.1f RPM    ", x);
+            std::string result(buf);
+            id(hmi_show_param_value).execute(220 + 512, 288, result);
+          }
+
+  - platform: pulse_counter
+    pin: GPIO3
+    name: "103-入水流速"
+    id: water_flow_in_rate
+    unit_of_measurement: 'RPM'
+    icon: "mdi:water-sync"
+    update_interval: 10s  # 每10秒更新一次流速
+    on_value:
+      - lambda: |-
+          if (id(my_hmi_page_index) == 0) {
+            char buf[20];
+            snprintf(buf, sizeof(buf),"%.1f RPM    ", x);
+            std::string result(buf);
+            id(hmi_show_param_value).execute(220 + 512, 64, result);
+          }
+
+  - platform: pulse_counter
+    pin: GPIO8
+    name: "104-出水流速"
+    id: water_flow_out_rate
+    unit_of_measurement: 'RPM'
+    icon: "mdi:water-sync"
+    update_interval: 10s  # 每10秒更新一次流速
+    on_value:
+      - lambda: |-
+          if (id(my_hmi_page_index) == 0) {
+            char buf[20];
+            snprintf(buf, sizeof(buf),"%.1f RPM    ", x);
+            std::string result(buf);
+            id(hmi_show_param_value).execute(220 + 512, 96, result);
+          }
+
+  - platform: dht
+    pin: GPIO46
+    temperature:
+      id: temp
+      name: "Temperature"
+    humidity:
+      name: "Humidity"
+    update_interval: 60s
+
+  - platform: modbus_controller
+    modbus_controller_id: modbus_device_presssion_1
+    name: "101-气压"
+    id: air_pressure
+    register_type: holding
+    address: 0x0001
+    value_type: S_WORD
+    lambda: |-
+        int v;
+        v = data[0];
+        v <<= 8;
+        v |= data[1];
+        if (id(my_hmi_page_index) == 0) {
+          char buf[20];
+          snprintf(buf, sizeof(buf),"%d kPa    ", v);
+          std::string result(buf);
+          id(hmi_show_param_value).execute(220 + 512, 224, result);
+        }
+        return v;
+
+  - platform: modbus_controller
+    modbus_controller_id: modbus_device_presssion_2
+    name: "102-水压"
+    id: water_pressure
+    register_type: holding
+    address: 0x0001
+    value_type: S_WORD
+    lambda: |-
+        int v;
+        v = data[0];
+        v <<= 8;
+        v |= data[1];
+        if (id(my_hmi_page_index) == 0) {
+          char buf[20];
+          snprintf(buf, sizeof(buf),"%d mPa    ", v);
+          std::string result(buf);
+          id(hmi_show_param_value).execute(220 + 512, 256, result);
+        }
+        return v;
+
+  - platform: modbus_controller
+    modbus_controller_id: modbus_device_relay
+    name: "106-继电器延时"
+    register_type: holding
+    address: 202
+    value_type: S_WORD
+
+  - platform: modbus_controller
+    modbus_controller_id: modbus_device_dian_liu
+    name: "107-总电流"
+    register_type: holding
+    address: 8
+    value_type: S_WORD
+    lambda: |-
+        int v;
+        v = data[0];
+        v <<= 8;
+        v |= data[1];
+        float num = v;
+        num /= 100;
+        if (id(my_hmi_page_index) == 0) {
+          char buf[24];
+          memset(buf, 0x00, sizeof(buf));
+          snprintf(buf, sizeof(buf),"%.2f A     ", num);
+          std::string result(buf);
+          id(hmi_show_param_value).execute(220 + 512, 128, result);
+        }
+        return v;
+
+  - platform: modbus_controller
+    modbus_controller_id: modbus_device_dian_liu
+    name: "108-水泵电流"
+    register_type: holding
+    address: 9
+    value_type: S_WORD
+    lambda: |-
+        int v;
+        v = data[2];
+        v <<= 8;
+        v |= data[3];
+        float num = v;
+        num /= 100;
+        if (id(my_hmi_page_index) == 0) {
+          char buf[24];
+          memset(buf, 0x00, sizeof(buf));
+          snprintf(buf, sizeof(buf),"%.2f A     ", num);
+          std::string result(buf);
+          id(hmi_show_param_value).execute(220 + 512, 160, result);
+        }
+        return v;
+
+  - platform: modbus_controller
+    modbus_controller_id: modbus_device_dian_liu
+    name: "109-气泵电流"
+    register_type: holding
+    address: 10
+    value_type: S_WORD
+    lambda: |-
+        int v;
+        v = data[4];
+        v <<= 8;
+        v |= data[5];
+        float num = v;
+        num /= 100;
+        if (id(my_hmi_page_index) == 0) {
+          char buf[24];
+          memset(buf, 0x00, sizeof(buf));
+          snprintf(buf, sizeof(buf),"%.2f A     ", num);
+          std::string result(buf);
+          id(hmi_show_param_value).execute(220 + 512, 192, result);
+        }
+        return v;
+
+switch:
+  - platform: modbus_controller
+    modbus_controller_id: modbus_device_relay
+    name: "relay 01 ON/OFF"
+    id: relay_01
+    register_type: holding
+    address: 0
+    bitmask: 1
+    entity_category: config
+    icon: "mdi:toggle-switch"
+    on_turn_off: 
+      then: 
+      - lambda: id(hmi_show_relay_icon).execute(0 * 64, 541, 0 + 0x01);
+    on_turn_on: 
+      then:
+      - lambda: id(hmi_show_relay_icon).execute(0 * 64, 541, 0 + 0x11);
+  - platform: modbus_controller
+    modbus_controller_id: modbus_device_relay
+    name: "relay 02 加压回洗"
+    id: relay_02
+    register_type: holding
+    address: 1
+    bitmask: 1
+    entity_category: config
+    icon: "mdi:toggle-switch"
+    on_turn_off: 
+      then:
+      - lambda: id(hmi_show_relay_icon).execute(1 * 64, 541, 1 + 0x01);
+    on_turn_on: 
+      then:
+      - lambda: id(hmi_show_relay_icon).execute(1 * 64, 541, 1 + 0x11);
+  - platform: modbus_controller
+    modbus_controller_id: modbus_device_relay
+    name: "relay 03 软水"
+    id: relay_03
+    register_type: holding
+    address: 2
+    bitmask: 1
+    entity_category: config
+    icon: "mdi:toggle-switch"
+    on_turn_off: 
+      then:
+      - lambda: id(hmi_show_relay_icon).execute(2 * 64, 541, 2 + 0x01);
+    on_turn_on: 
+      then:
+      - lambda: id(hmi_show_relay_icon).execute(2 * 64, 541, 2 + 0x11);
+  - platform: modbus_controller
+    modbus_controller_id: modbus_device_relay
+    name: "relay 04 回洗"
+    id: relay_04
+    register_type: holding
+    address: 3
+    bitmask: 1
+    entity_category: config
+    icon: "mdi:toggle-switch"
+    on_turn_off: 
+      then:
+      - lambda: id(hmi_show_relay_icon).execute(3 * 64, 541, 3 + 0x01);
+    on_turn_on: 
+      then:
+      - lambda: id(hmi_show_relay_icon).execute(3 * 64, 541, 3 + 0x11);
+  - platform: modbus_controller
+    modbus_controller_id: modbus_device_relay
+    name: "relay 05 LED"
+    id: relay_05
+    register_type: holding
+    address: 4
+    bitmask: 1
+    entity_category: config
+    icon: "mdi:toggle-switch"
+    on_turn_off: 
+      then:
+      - lambda: id(hmi_show_relay_icon).execute(4 * 64, 541, 4 + 0x01);
+    on_turn_on: 
+      then:
+      - lambda: id(hmi_show_relay_icon).execute(4 * 64, 541, 4 + 0x11);
+  - platform: modbus_controller
+    modbus_controller_id: modbus_device_relay
+    name: "relay 06 空压机"
+    id: relay_06
+    register_type: holding
+    address: 5
+    bitmask: 1
+    entity_category: config
+    icon: "mdi:toggle-switch"
+    on_turn_off: 
+      then:
+      - lambda: id(hmi_show_relay_icon).execute(5 * 64, 541, 5 + 0x01);
+    on_turn_on: 
+      then:
+      - lambda: id(hmi_show_relay_icon).execute(5 * 64, 541, 5 + 0x11);
+  - platform: modbus_controller
+    modbus_controller_id: modbus_device_relay
+    name: "relay 07 加压马达"
+    id: relay_07
+    register_type: holding
+    address: 6
+    bitmask: 1
+    entity_category: config
+    icon: "mdi:toggle-switch"
+    on_turn_off: 
+      then:
+      - lambda: id(hmi_show_relay_icon).execute(6 * 64, 541, 6 + 0x01);
+    on_turn_on: 
+      then:
+      - lambda: id(hmi_show_relay_icon).execute(6 * 64, 541, 6 + 0x11);
+  - platform: modbus_controller
+    modbus_controller_id: modbus_device_relay
+    name: "relay 08 洗车机"
+    id: relay_08
+    register_type: holding
+    address: 7
+    bitmask: 1
+    entity_category: config
+    icon: "mdi:toggle-switch"
+    on_turn_off: 
+      then:
+      - lambda: id(hmi_show_relay_icon).execute(7 * 64, 541, 7 + 0x01);
+    on_turn_on: 
+      then:
+      - lambda: id(hmi_show_relay_icon).execute(7 * 64, 541, 7 + 0x11);
+  - platform: modbus_controller
+    modbus_controller_id: modbus_device_relay
+    name: "relay 09 泡泡1"
+    id: relay_09
+    register_type: holding
+    address: 8
+    bitmask: 1
+    entity_category: config
+    icon: "mdi:toggle-switch"
+    on_turn_off: 
+      then:
+      - lambda: id(hmi_show_relay_icon).execute(8 * 64, 541, 8 + 0x01);
+    on_turn_on: 
+      then:
+      - lambda: id(hmi_show_relay_icon).execute(8 * 64, 541, 8 + 0x11);
+  - platform: modbus_controller
+    modbus_controller_id: modbus_device_relay
+    name: "relay 10 泡泡2"
+    id: relay_10
+    register_type: holding
+    address: 9
+    bitmask: 1
+    entity_category: config
+    icon: "mdi:toggle-switch"
+    on_turn_off: 
+      then:
+      - lambda: id(hmi_show_relay_icon).execute(9 * 64, 541, 9 + 0x01);
+    on_turn_on: 
+      then:
+      - lambda: id(hmi_show_relay_icon).execute(9 * 64, 541, 9 + 0x11);
+  - platform: modbus_controller
+    modbus_controller_id: modbus_device_relay
+    name: "relay 11 泡泡3"
+    id: relay_11
+    register_type: holding
+    address: 10
+    bitmask: 1
+    entity_category: config
+    icon: "mdi:toggle-switch"
+    on_turn_off: 
+      then:
+      - lambda: id(hmi_show_relay_icon).execute(10 * 64, 541, 10 + 0x01);
+    on_turn_on: 
+      then:
+      - lambda: id(hmi_show_relay_icon).execute(10 * 64, 541, 10 + 0x11);
+  - platform: modbus_controller
+    modbus_controller_id: modbus_device_relay
+    name: "relay 12 ON/OFF"
+    id: relay_12
+    register_type: holding
+    address: 11
+    bitmask: 1
+    entity_category: config
+    icon: "mdi:toggle-switch"
+    on_turn_off: 
+      then:
+      - lambda: id(hmi_show_relay_icon).execute(11 * 64, 541, 11 + 0x01);
+    on_turn_on: 
+      then:
+      - lambda: id(hmi_show_relay_icon).execute(11 * 64, 541, 11 + 0x11);
+  - platform: modbus_controller
+    modbus_controller_id: modbus_device_relay
+    name: "relay 13 闸门机"
+    id: relay_13
+    register_type: holding
+    address: 12
+    bitmask: 1
+    entity_category: config
+    icon: "mdi:toggle-switch"
+    on_turn_off: 
+      then:
+      - lambda: id(hmi_show_relay_icon).execute(12 * 64, 541, 12 + 0x01);
+    on_turn_on: 
+      then:
+      - lambda: id(hmi_show_relay_icon).execute(12 * 64, 541, 12 + 0x11);
+  - platform: modbus_controller
+    modbus_controller_id: modbus_device_relay
+    name: "relay 14 ON/OFF"
+    id: relay_14
+    register_type: holding
+    address: 13
+    bitmask: 1
+    entity_category: config
+    icon: "mdi:toggle-switch"
+    on_turn_off: 
+      then:
+      - lambda: id(hmi_show_relay_icon).execute(13 * 64, 541, 13 + 0x01);
+    on_turn_on: 
+      then:
+      - lambda: id(hmi_show_relay_icon).execute(13 * 64, 541, 13 + 0x11);
+  - platform: modbus_controller
+    modbus_controller_id: modbus_device_relay
+    name: "relay 15 室内灯2"
+    id: relay_15
+    register_type: holding
+    address: 14
+    bitmask: 1
+    entity_category: config
+    icon: "mdi:toggle-switch"
+    on_turn_off: 
+      then:
+      - lambda: id(hmi_show_relay_icon).execute(14 * 64, 541, 14 + 0x01);
+    on_turn_on: 
+      then:
+      - lambda: id(hmi_show_relay_icon).execute(14 * 64, 541, 14 + 0x11);
+  - platform: modbus_controller
+    modbus_controller_id: modbus_device_relay
+    name: "relay 16 室内灯1"
+    id: relay_16
+    register_type: holding
+    address: 15
+    bitmask: 1
+    entity_category: config
+    icon: "mdi:toggle-switch"
+    on_turn_off: 
+      then:
+      - lambda: id(hmi_show_relay_icon).execute(15 * 64, 541, 15 + 0x01);
+    on_turn_on: 
+      then:
+      - lambda: id(hmi_show_relay_icon).execute(15 * 64, 541, 15 + 0x11);
+
+light:
+  - platform: esp32_rmt_led_strip
+    rgb_order: GRB
+    pin: GPIO40
+    id: light_rgb_id
+    num_leds: 1
+#    rmt_channel: 0
+    chipset: ws2812
+    name: "Light id"
+    internal: true
+  - platform: esp32_rmt_led_strip
+    rgb_order: GRB
+    pin: GPIO48
+    id: light_rgb1
+    num_leds: 1
+#    rmt_channel: 1
+    chipset: ws2812
+    name: "LED_on_board"
+
+  - platform: status_led
+    name: "sys run led"
+    pin: GPIO0
+
+binary_sensor:
+  - platform: gpio
+    id: ac_power_lose
+    #name: "01-外接电源"
+    name: "01power"
+    pin:
+      number: GPIO5
+      mode:
+        input: true
+        pullup: true    
+    on_state: 
+      then:
+        - logger.log: the ac power is removed
+        - lambda: |-
+            if (id(my_hmi_page_index) == 0) {
+              if (id(ac_power_lose).state) {
+                id(hmi_show_param_value).execute(220, 32, " ON");
+              } else {
+                id(hmi_show_param_value).execute(220, 32, "OFF");
+              }
+            }
+  - platform: gpio
+    id: leak_det
+    name: "02-漏水检测"
+    pin:
+      number: GPIO45
+      mode:
+        input: true
+#        pullup: true    
+    on_state: 
+      then:
+        - logger.log: water leak detect
+        - lambda: |-
+            if (id(my_hmi_page_index) == 0) {
+              if (id(leak_det).state) {
+                id(hmi_show_param_value).execute(220, 64, " ON");
+              } else {
+                id(hmi_show_param_value).execute(220, 64, "OFF");
+              }
+            }
+
+  - platform: gpio
+    id: water_level_1
+    name: "03-软水箱水位"
+    pin:
+      number: GPIO15
+      mode:
+        input: true
+        pullup: true    
+#      inverted: true
+    on_state: 
+      then:
+        - logger.log: water 1 level detect
+        - lambda: |-
+            if (id(my_hmi_page_index) == 0) {
+              if (id(water_level_1).state) {
+                id(hmi_show_param_value).execute(220, 96, " ON");
+              } else {
+                id(hmi_show_param_value).execute(220, 96, "OFF");
+              }
+            }
+
+  - platform: gpio
+    id: water_level_2
+    name: "04-水箱水位"
+    pin:
+      number: GPIO16
+      mode:
+        input: true
+        pullup: true    
+#      inverted: true
+    on_state: 
+      then:
+        - logger.log: water 2 level detect
+        - lambda: |-
+            if (id(my_hmi_page_index) == 0) {
+              if (id(water_level_2).state) {
+                id(hmi_show_param_value).execute(220, 128, " ON");
+              } else {
+                id(hmi_show_param_value).execute(220, 128, "OFF");
+              }
+            }
+
+  - platform: gpio
+    id: check_babble_input_1
+    name: "11-缺泡泡液"
+    pin:
+      number: GPIO35
+      mode:
+        input: true
+        pullup: true    
+      inverted: true
+    on_state: 
+      - if:
+          condition:
+            lambda: 'return x;'
+          then:
+            - lambda: |-
+                if (id(my_hmi_page_index) == 0) {
+                  id(hmi_show_param_value).execute(220, 384, " ON");
+                }
+          else:
+            - lambda: |-
+                if (id(my_hmi_page_index) == 0) {
+                  id(hmi_show_param_value).execute(220, 384, "OFF");
+                }
+
+  - platform: gpio
+    id: check_door_input
+    name: "12-门磁"
+    pin:
+#      xl9535: xl9535_hub
+      number: GPIO17
+      mode:
+        input: true
+#        pullup: true    
+      inverted: true
+    on_state: 
+      - if:
+          condition:
+            lambda: 'return x;'
+          then:
+            - lambda: |-
+                if (id(my_hmi_page_index) == 0) {
+                  id(hmi_show_param_value).execute(220, 256, " ON");
+                }
+          else:
+            - lambda: |-
+                if (id(my_hmi_page_index) == 0) {
+                  id(hmi_show_param_value).execute(220, 256, "OFF");
+                }
+
+  - platform: gpio
+    id: washer_led_b
+    name: "05-洗车机蓝色灯"
+    pin:
+      number: GPIO21
+      mode:
+        input: true
+        pullup: true    
+      inverted: true
+    on_state: 
+      - if:
+          condition:
+            lambda: 'return x;'
+          then:
+            - lambda: |-
+                if (id(my_hmi_page_index) == 0) {
+                  id(hmi_show_param_value).execute(220, 288, " ON");
+                }
+          else:
+            - lambda: |-
+                if (id(my_hmi_page_index) == 0) {
+                  id(hmi_show_param_value).execute(220, 288, "OFF");
+                }
+
+  - platform: gpio
+    id: washer_led_g
+    name: "06-洗车机绿色灯"
+    pin:
+      number: GPIO47
+      mode:
+        input: true
+        pullup: true    
+      inverted: true
+    on_state: 
+      - if:
+          condition:
+            lambda: 'return x;'
+          then:
+            - lambda: |-
+                if (id(my_hmi_page_index) == 0) {
+                  id(hmi_show_param_value).execute(220, 320, " ON");
+                }
+          else:
+            - lambda: |-
+                if (id(my_hmi_page_index) == 0) {
+                  id(hmi_show_param_value).execute(220, 320, "OFF");
+                }
+
+  - platform: gpio
+    id: washer_led_r
+    name: "07-洗车机红色灯"
+    pin:
+      number: GPIO7
+      mode:
+        input: true
+        pullup: true    
+      inverted: true
+    on_state: 
+      - if:
+          condition:
+            lambda: 'return x;'
+          then:
+            - lambda: |-
+                if (id(my_hmi_page_index) == 0) {
+                  id(hmi_show_param_value).execute(220, 352, " ON");
+                }
+          else:
+            - lambda: |-
+                if (id(my_hmi_page_index) == 0) {
+                  id(hmi_show_param_value).execute(220, 352, "OFF");
+                }
+
+  - platform: gpio
+    id: emgr_input
+    name: "08-紧急按钮"
+    pin:
+      number: GPIO38
+      mode:
+        input: true
+        pullup: true    
+      inverted: true
+    filters:
+      - delayed_on: 100ms
+    on_state: 
+      - if:
+          condition:
+            lambda: 'return x;'
+          then:
+            - lambda: |-
+                if (id(my_hmi_page_index) == 0) {
+                  id(hmi_show_param_value).execute(220, 160, " ON");
+                }
+                unsigned char aucTempBuf[10];
+                aucTempBuf[0] = 0xfd;
+                aucTempBuf[1] = 0x03;
+                aucTempBuf[2] = 0xc7;
+                aucTempBuf[3] = 0x50;
+                aucTempBuf[4] = 0x85;
+                aucTempBuf[5] = 0x4b;
+                aucTempBuf[6] = 0xdf;
+                uart_write_bytes((uart_port_t)2, aucTempBuf, 7);
+          else:
+            - lambda: |-
+                if (id(my_hmi_page_index) == 0) {
+                  id(hmi_show_param_value).execute(220, 160, "OFF");
+                }
+
+  - platform: gpio
+    id: start_stop_input
+    name: "09-启动/停止"
+    pin:
+      number: GPIO39
+      mode:
+        input: true
+        pullup: true    
+      inverted: true
+    filters:
+      - delayed_on: 100ms
+    on_state: 
+      - if:
+          condition:
+            lambda: 'return x;'
+          then:
+            - lambda: |-
+                if (id(my_hmi_page_index) == 0) {
+                  id(hmi_show_param_value).execute(220, 192, " ON");
+                }
+          else:
+            - lambda: |-
+                if (id(my_hmi_page_index) == 0) {
+                  id(hmi_show_param_value).execute(220, 192, "OFF");
+                }
+
+  - platform: gpio
+    id: car_high_input
+    name: "10-车辆超高"
+    pin:
+      number: GPIO18
+      mode:
+        input: true
+        pullup: true    
+      inverted: true
+    on_state: 
+      - if:
+          condition:
+            lambda: 'return x;'
+          then:
+            - lambda: |-
+                if (id(my_hmi_page_index) == 0) {
+                  id(hmi_show_param_value).execute(220, 224, " ON");
+                }
+          else:
+            - lambda: |-
+                if (id(my_hmi_page_index) == 0) {
+                  id(hmi_show_param_value).execute(220, 224, "OFF");
+                }
+
+output:
+  - platform: ledc
+    pin: GPIO37
+    id: my_output_id
+    frequency: 25000Hz
+fan:
+  - platform: speed
+    name: "200-风扇控制"
+    output: my_output_id
+    speed_count: 100
+
+script:
+  - id: washer_send_cmd
+    parameters:
+      cmd_num: int
+      source: string
+      cmd_name: string
+    mode: single
+    then:
+      - lambda: |-
+          unsigned char aucCmdTable[10][7] = {
+            {0xfd, 0x03, 0xc7, 0x50, 0x82, 0x4a, 0xdf},
+            {0xfd, 0x03, 0xc7, 0x50, 0x88, 0x4b, 0xdf},
+            {0xfd, 0x03, 0xc7, 0x50, 0x81, 0x4a, 0xdf},
+            {0xfd, 0x03, 0xc7, 0x50, 0x84, 0x4b, 0xdf},
+            {0xfd, 0x03, 0xc7, 0x50, 0x8c, 0x4b, 0xdf},
+            {0xfd, 0x03, 0xc7, 0x50, 0x83, 0x4b, 0xdf},
+            {0xfd, 0x03, 0xc7, 0x50, 0x85, 0x4b, 0xdf},
+            {0xfd, 0x03, 0xc7, 0x50, 0x8a, 0x4b, 0xdf},
+            {0xfd, 0x03, 0xc7, 0x50, 0x89, 0x43, 0xdf},
+            {0xfd, 0x03, 0xc7, 0x50, 0x90, 0x3c, 0xdf}
+          };
+          if ((cmd_num >= 1) && (cmd_num <= 10)) {
+            uart_write_bytes((uart_port_t)2, aucCmdTable[cmd_num-1], 7);
+            ESP_LOGI("WASHER", "TX> %02X %02X %02X %02X %02X %02X %02X [%s %s x1]",
+              aucCmdTable[cmd_num-1][0], aucCmdTable[cmd_num-1][1], aucCmdTable[cmd_num-1][2],
+              aucCmdTable[cmd_num-1][3], aucCmdTable[cmd_num-1][4], aucCmdTable[cmd_num-1][5],
+              aucCmdTable[cmd_num-1][6], source.c_str(), cmd_name.c_str());
+          }
+      - delay: 100ms
+      - lambda: |-
+          unsigned char aucCmdTable[10][7] = {
+            {0xfd, 0x03, 0xc7, 0x50, 0x82, 0x4a, 0xdf},
+            {0xfd, 0x03, 0xc7, 0x50, 0x88, 0x4b, 0xdf},
+            {0xfd, 0x03, 0xc7, 0x50, 0x81, 0x4a, 0xdf},
+            {0xfd, 0x03, 0xc7, 0x50, 0x84, 0x4b, 0xdf},
+            {0xfd, 0x03, 0xc7, 0x50, 0x8c, 0x4b, 0xdf},
+            {0xfd, 0x03, 0xc7, 0x50, 0x83, 0x4b, 0xdf},
+            {0xfd, 0x03, 0xc7, 0x50, 0x85, 0x4b, 0xdf},
+            {0xfd, 0x03, 0xc7, 0x50, 0x8a, 0x4b, 0xdf},
+            {0xfd, 0x03, 0xc7, 0x50, 0x89, 0x43, 0xdf},
+            {0xfd, 0x03, 0xc7, 0x50, 0x90, 0x3c, 0xdf}
+          };
+          if ((cmd_num >= 1) && (cmd_num <= 10)) {
+            uart_write_bytes((uart_port_t)2, aucCmdTable[cmd_num-1], 7);
+          }
+      - delay: 100ms
+      - lambda: |-
+          unsigned char aucCmdTable[10][7] = {
+            {0xfd, 0x03, 0xc7, 0x50, 0x82, 0x4a, 0xdf},
+            {0xfd, 0x03, 0xc7, 0x50, 0x88, 0x4b, 0xdf},
+            {0xfd, 0x03, 0xc7, 0x50, 0x81, 0x4a, 0xdf},
+            {0xfd, 0x03, 0xc7, 0x50, 0x84, 0x4b, 0xdf},
+            {0xfd, 0x03, 0xc7, 0x50, 0x8c, 0x4b, 0xdf},
+            {0xfd, 0x03, 0xc7, 0x50, 0x83, 0x4b, 0xdf},
+            {0xfd, 0x03, 0xc7, 0x50, 0x85, 0x4b, 0xdf},
+            {0xfd, 0x03, 0xc7, 0x50, 0x8a, 0x4b, 0xdf},
+            {0xfd, 0x03, 0xc7, 0x50, 0x89, 0x43, 0xdf},
+            {0xfd, 0x03, 0xc7, 0x50, 0x90, 0x3c, 0xdf}
+          };
+          if ((cmd_num >= 1) && (cmd_num <= 10)) {
+            uart_write_bytes((uart_port_t)2, aucCmdTable[cmd_num-1], 7);
+          }
+      - delay: 100ms
+      - lambda: |-
+          unsigned char aucCmdTable[10][7] = {
+            {0xfd, 0x03, 0xc7, 0x50, 0x82, 0x4a, 0xdf},
+            {0xfd, 0x03, 0xc7, 0x50, 0x88, 0x4b, 0xdf},
+            {0xfd, 0x03, 0xc7, 0x50, 0x81, 0x4a, 0xdf},
+            {0xfd, 0x03, 0xc7, 0x50, 0x84, 0x4b, 0xdf},
+            {0xfd, 0x03, 0xc7, 0x50, 0x8c, 0x4b, 0xdf},
+            {0xfd, 0x03, 0xc7, 0x50, 0x83, 0x4b, 0xdf},
+            {0xfd, 0x03, 0xc7, 0x50, 0x85, 0x4b, 0xdf},
+            {0xfd, 0x03, 0xc7, 0x50, 0x8a, 0x4b, 0xdf},
+            {0xfd, 0x03, 0xc7, 0x50, 0x89, 0x43, 0xdf},
+            {0xfd, 0x03, 0xc7, 0x50, 0x90, 0x3c, 0xdf}
+          };
+          if ((cmd_num >= 1) && (cmd_num <= 10)) {
+            uart_write_bytes((uart_port_t)2, aucCmdTable[cmd_num-1], 7);
+          }
+      - delay: 100ms
+      - lambda: |-
+          unsigned char aucCmdTable[10][7] = {
+            {0xfd, 0x03, 0xc7, 0x50, 0x82, 0x4a, 0xdf},
+            {0xfd, 0x03, 0xc7, 0x50, 0x88, 0x4b, 0xdf},
+            {0xfd, 0x03, 0xc7, 0x50, 0x81, 0x4a, 0xdf},
+            {0xfd, 0x03, 0xc7, 0x50, 0x84, 0x4b, 0xdf},
+            {0xfd, 0x03, 0xc7, 0x50, 0x8c, 0x4b, 0xdf},
+            {0xfd, 0x03, 0xc7, 0x50, 0x83, 0x4b, 0xdf},
+            {0xfd, 0x03, 0xc7, 0x50, 0x85, 0x4b, 0xdf},
+            {0xfd, 0x03, 0xc7, 0x50, 0x8a, 0x4b, 0xdf},
+            {0xfd, 0x03, 0xc7, 0x50, 0x89, 0x43, 0xdf},
+            {0xfd, 0x03, 0xc7, 0x50, 0x90, 0x3c, 0xdf}
+          };
+          if ((cmd_num >= 1) && (cmd_num <= 10)) {
+            uart_write_bytes((uart_port_t)2, aucCmdTable[cmd_num-1], 7);
+            ESP_LOGI("WASHER", "TX> %02X %02X %02X %02X %02X %02X %02X [%s %s x5]",
+              aucCmdTable[cmd_num-1][0], aucCmdTable[cmd_num-1][1], aucCmdTable[cmd_num-1][2],
+              aucCmdTable[cmd_num-1][3], aucCmdTable[cmd_num-1][4], aucCmdTable[cmd_num-1][5],
+              aucCmdTable[cmd_num-1][6], source.c_str(), cmd_name.c_str());
+          }
+
+  - id: hmi_show_relay_icon
+    parameters:
+      pos_x: int
+      pos_y: int
+      icon: int
+    mode: single
+    then:
+      - lambda: |-
+          if (id(my_hmi_page_index) != 0) {
+            return;
+          }
+          unsigned char aucTempBuf[14];
+          aucTempBuf[0] = 0xaa;
+          aucTempBuf[1] = 0x97;
+          aucTempBuf[2] = pos_x >> 8;
+          aucTempBuf[3] = pos_x & 0xff;
+          aucTempBuf[4] = pos_y >> 8;
+          aucTempBuf[5] = pos_y & 0xff;
+          aucTempBuf[6] = 0x3a;
+          aucTempBuf[7] = 0x01;
+          aucTempBuf[8] = icon >> 8;
+          aucTempBuf[9] = icon & 0xff;
+          aucTempBuf[10] = 0xcc;
+          aucTempBuf[11] = 0x33;
+          aucTempBuf[12] = 0xc3;
+          aucTempBuf[13] = 0x3c;
+          uart_write_bytes((uart_port_t)0, aucTempBuf, 14);
+
+  - id: hmi_show_page1_icon
+    parameters:
+      pos_x: int
+      pos_y: int
+      icon: int
+    mode: single
+    then:
+      - lambda: |-
+          if (id(my_hmi_page_index) != 1) {
+            return;
+          }
+          unsigned char aucTempBuf[14];
+          aucTempBuf[0] = 0xaa;
+          aucTempBuf[1] = 0x97;
+          aucTempBuf[2] = pos_x >> 8;
+          aucTempBuf[3] = pos_x & 0xff;
+          aucTempBuf[4] = pos_y >> 8;
+          aucTempBuf[5] = pos_y & 0xff;
+          aucTempBuf[6] = 0x3a;
+          aucTempBuf[7] = 0x01;
+          aucTempBuf[8] = icon >> 8;
+          aucTempBuf[9] = icon & 0xff;
+          aucTempBuf[10] = 0xcc;
+          aucTempBuf[11] = 0x33;
+          aucTempBuf[12] = 0xc3;
+          aucTempBuf[13] = 0x3c;
+          uart_write_bytes((uart_port_t)0, aucTempBuf, 14);
+
+  - id: hmi_show_page
+    parameters:
+      page: int
+    mode: single
+    then:
+      - lambda: |-
+          unsigned char aucTempBuf[7] = {0xaa, 0x70, 0x00, 0xcc, 0x33, 0xc3, 0x3c};
+          aucTempBuf[2] = page & 0xff;
+          uart_write_bytes((uart_port_t)0, aucTempBuf, sizeof(aucTempBuf));
+          ESP_LOGE("main", "show page [%d]", page);
+
+  - id: hmi_show_clear_all
+    mode: single
+    then:
+      - lambda: |-
+          unsigned char aucTempBuf[6] = {0xaa, 0x52, 0xcc, 0x33, 0xc3, 0x3c};
+          uart_write_bytes((uart_port_t)0, aucTempBuf, sizeof(aucTempBuf));
+          ESP_LOGE("main", "show page clear all");
+
+  - id: hmi_show_param_value
+    parameters:
+      pos_x: int
+      pos_y: int
+      value: string
+    mode: single
+    then:
+      - lambda: |-
+          if (id(my_hmi_page_index) != 0) return;
+          unsigned char aucHeadBuf[6] = {0xaa, 0x55, 0x00, 0x00, 0x00, 0x00};
+          unsigned char aucTailBuf[4] = {0xcc, 0x33, 0xc3, 0x3c};
+          aucHeadBuf[2] = pos_x >> 8;
+          aucHeadBuf[3] = pos_x & 0xff;
+          aucHeadBuf[4] = pos_y >> 8;
+          aucHeadBuf[5] = pos_y & 0xff;
+          uart_write_bytes((uart_port_t)0, aucHeadBuf, sizeof(aucHeadBuf));
+          uart_write_bytes((uart_port_t)0, value.c_str(), value.length());
+          uart_write_bytes((uart_port_t)0, aucTailBuf, sizeof(aucTailBuf));
+
+  - id: hmi_1_show_param_value
+    parameters:
+      pos_x: int
+      pos_y: int
+      value: string
+    mode: single
+    then:
+      - lambda: |-
+          if (id(my_hmi_page_index) != 1) return;
+          unsigned char aucHeadBuf[6] = {0xaa, 0x55, 0x00, 0x00, 0x00, 0x00};
+          unsigned char aucTailBuf[4] = {0xcc, 0x33, 0xc3, 0x3c};
+          aucHeadBuf[2] = pos_x >> 8;
+          aucHeadBuf[3] = pos_x & 0xff;
+          aucHeadBuf[4] = pos_y >> 8;
+          aucHeadBuf[5] = pos_y & 0xff;
+          uart_write_bytes((uart_port_t)0, aucHeadBuf, sizeof(aucHeadBuf));
+          uart_write_bytes((uart_port_t)0, value.c_str(), value.length());
+          uart_write_bytes((uart_port_t)0, aucTailBuf, sizeof(aucTailBuf));
+
+  - id: hmi_clear_user_code
+    mode: single
+    then:
+      - lambda: |-
+          unsigned char aucTempBuf[19] = {0xAA, 0x71, 0x01, 0x00, 0xB6, 0x00, 0x9B, 0x02, 0x0B, 0x00, 0xF6, 0x00, 0xB6, 0x00, 0x9B, 0xCC, 0x33, 0xC3, 0x3C};
+          uart_write_bytes((uart_port_t)0, aucTempBuf, sizeof(aucTempBuf));
+          //ESP_LOGE("main", "clear user code");
+
+  - id: hmi_clear_pass_err
+    mode: single
+    then:
+      - lambda: |-
+          unsigned char aucTempBuf[19] = {0xAA, 0x71, 0x01, 0x02, 0x58, 0x00, 0xC8, 0x03, 0x4A, 0x01, 0x2C, 0x02, 0x58, 0x00, 0xC8, 0xCC, 0x33, 0xC3, 0x3C};
+          uart_write_bytes((uart_port_t)0, aucTempBuf, sizeof(aucTempBuf));
+          //ESP_LOGE("main", "clear user code");
+
+  - id: hmi_show_user_code
+    parameters:
+      pos_x: int
+      pos_y: int
+      value: char
+    mode: single
+    then:
+      - lambda: |-
+          unsigned char aucHeadBuf[18] = {0xaa, 0x98, 0x00, 0x00, 0x00, 0x00, 0x00, 0x02, 0x07, 0x00, 0x00, 0xff, 0xff, '0', 0xcc, 0x33, 0xc3, 0x3c};
+          aucHeadBuf[2] = pos_x >> 8;
+          aucHeadBuf[3] = pos_x & 0xff;
+          aucHeadBuf[4] = pos_y >> 8;
+          aucHeadBuf[5] = pos_y & 0xff;
+          if ( (value < '0') || (value > '9') )
+          {
+            aucHeadBuf[9] = 0xff;
+            aucHeadBuf[10] = 0xff;
+          }
+          else
+          {
+            aucHeadBuf[13] = value;
+          }
+          uart_write_bytes((uart_port_t)0, aucHeadBuf, sizeof(aucHeadBuf));
+          //ESP_LOGE("main", "show param[%s][%d] to [%d, %d]", value.c_str(), value.length(), pos_x, pos_y);
+
+  - id: hmi_show_param_name
+    mode: single
+    then:
+      - lambda: |-
+          //序列号
+          const unsigned char aucName_1[] = {0xAA, 0x55, 0x00, 0x00, 0x00, 0, 0xD0, 0xF2, 0xC1, 0xD0, 0xBA, 0xC5, 0xA3, 0xBA, 0xCC, 0x33, 0xC3, 0x3C};
+          //外接电源
+          const unsigned char aucName_2[] = {0xAA, 0x55, 0x00, 0x00, 0x00, 32, 0xCD, 0xE2, 0xBD, 0xD3, 0xB5, 0xE7, 0xD4, 0xB4, 0xA3, 0xBA, 0x20, 0xCC, 0x33, 0xC3, 0x3C};
+          //漏水检测
+          const unsigned char aucName_3[] = {0xAA, 0x55, 0x00, 0x00, 0x00, 64, 0xC2, 0xA9, 0xCB, 0xAE, 0xBC, 0xEC, 0xB2, 0xE2, 0xA3, 0xBA, 0x20, 0xCC, 0x33, 0xC3, 0x3C};
+          //软水箱水位
+          const unsigned char aucName_4[] = {0xAA, 0x55, 0x00, 0x00, 0x00, 96, 0xC8, 0xED, 0xCB, 0xAE, 0xCF, 0xE4, 0xCB, 0xAE, 0xCE, 0xBB, 0xA3, 0xBA, 0xCC, 0x33, 0xC3, 0x3C};
+          //水箱水位
+          const unsigned char aucName_5[] = {0xAA, 0x55, 0x00, 0x00, 0x00, 128, 0xCB, 0xAE, 0xCF, 0xE4, 0xCB, 0xAE, 0xCE, 0xBB, 0xA3, 0xBA, 0xCC, 0x33, 0xC3, 0x3C};
+          //紧急按钮
+          const unsigned char aucName_6[] = {0xAA, 0x55, 0x00, 0x00, 0x00, 160, 0xBD, 0xF4, 0xBC, 0xB1, 0xB0, 0xB4, 0xC5, 0xA5, 0xA3, 0xBA, 0xCC, 0x33, 0xC3, 0x3C};
+          //启动/停止
+          const unsigned char aucName_7[] = {0xAA, 0x55, 0x00, 0x00, 0x00, 192, 0xC6, 0xF4, 0xB6, 0xAF, 0x2F, 0xCD, 0xA3, 0xD6, 0xB9, 0xA3, 0xBA, 0xCC, 0x33, 0xC3, 0x3C};
+          //车辆超高
+          const unsigned char aucName_8[] = {0xAA, 0x55, 0x00, 0x00, 0x00, 224, 0xB3, 0xB5, 0xC1, 0xBE, 0xB3, 0xAC, 0xB8, 0xDF, 0xA3, 0xBA, 0xCC, 0x33, 0xC3, 0x3C};
+          //门磁
+          const unsigned char aucName_9[] = {0xAA, 0x55, 0x00, 0x00, 0x01, 0, 0xC3, 0xC5, 0xB4, 0xC5, 0xA3, 0xBA, 0xCC, 0x33, 0xC3, 0x3C};
+          //洗车机蓝灯
+          const unsigned char aucName_10[] = {0xAA, 0x55, 0x00, 0x00, 0x01, 32, 0xCF, 0xB4, 0xB3, 0xB5, 0xBB, 0xFA, 0xC0, 0xB6, 0xB5, 0xC6, 0xA3, 0xBA, 0xCC, 0x33, 0xC3, 0x3C};
+          //洗车机绿灯
+          const unsigned char aucName_11[] = {0xAA, 0x55, 0x00, 0x00, 0x01, 64, 0xCF, 0xB4, 0xB3, 0xB5, 0xBB, 0xFA, 0xC2, 0xCC, 0xB5, 0xC6, 0xA3, 0xBA, 0xCC, 0x33, 0xC3, 0x3C};
+          //洗车机红灯
+          const unsigned char aucName_12[] = {0xAA, 0x55, 0x00, 0x00, 0x01, 96, 0xCF, 0xB4, 0xB3, 0xB5, 0xBB, 0xFA, 0xBA, 0xEC, 0xB5, 0xC6, 0xA3, 0xBA, 0xCC, 0x33, 0xC3, 0x3C};
+          //缺泡沫
+          const unsigned char aucName_13[] = {0xAA, 0x55, 0x00, 0x00, 0x01, 128, 0xC8, 0xB1, 0xC5, 0xDD, 0xC4, 0xAD, 0xA3, 0xBA, 0xCC, 0x33, 0xC3, 0x3C};
+          //泡泡液2
+          //const unsigned char aucName_14[] = {0xAA, 0x55, 0x00, 0x00, 0x01, 160, 0xC5, 0xDD, 0xC5, 0xDD, 0xD2, 0xBA, 0x32, 0xA3, 0xBA, 0xCC, 0x33, 0xC3, 0x3C};
+          //泡泡液3
+          //const unsigned char aucName_15[] = {0xAA, 0x55, 0x00, 0x00, 0x01, 192, 0xC5, 0xDD, 0xC5, 0xDD, 0xD2, 0xBA, 0x33, 0xA3, 0xBA, 0xCC, 0x33, 0xC3, 0x3C};
+          //泡泡液4
+          //const unsigned char aucName_16[] = {0xAA, 0x55, 0x00, 0x00, 0x01, 224, 0xC5, 0xDD, 0xC5, 0xDD, 0xD2, 0xBA, 0x34, 0xA3, 0xBA, 0xCC, 0x33, 0xC3, 0x3C};
+
+          //运行时间
+          const unsigned char aucName_50[] = {0xAA, 0x55, 0x02, 0x00, 0x00, 32, 0xD4, 0xCB, 0xD0, 0xD0, 0xCA, 0xB1, 0xBC, 0xE4, 0xA3, 0xBA, 0xCC, 0x33, 0xC3, 0x3C};
+          //总用水量
+          //const unsigned char aucName_51[] = {0xAA, 0x55, 0x02, 0x00, 0x00, 32, 0xD7, 0xDC, 0xD3, 0xC3, 0xCB, 0xAE, 0xC1, 0xBF, 0xA3, 0xBA, 0xCC, 0x33, 0xC3, 0x3C};
+          //进水流速
+          const unsigned char aucName_52[] = {0xAA, 0x55, 0x02, 0x00, 0x00, 64, 0xBD, 0xF8, 0xCB, 0xAE, 0xC1, 0xF7, 0xCB, 0xD9, 0xA3, 0xBA, 0xCC, 0x33, 0xC3, 0x3C};
+          //出水流速
+          const unsigned char aucName_53[] = {0xAA, 0x55, 0x02, 0x00, 0x00, 96, 0xB3, 0xF6, 0xCB, 0xAE, 0xC1, 0xF7, 0xCB, 0xD9, 0xA3, 0xBA, 0xCC, 0x33, 0xC3, 0x3C};
+          //总电流
+          const unsigned char aucName_54[] = {0xAA, 0x55, 0x02, 0x00, 0x00, 128, 0xD7, 0xDC, 0xB5, 0xE7, 0xC1, 0xF7, 0xA3, 0xBA, 0xCC, 0x33, 0xC3, 0x3C};
+          //水泵电流
+          const unsigned char aucName_55[] = {0xAA, 0x55, 0x02, 0x00, 0x00, 160, 0xCB, 0xAE, 0xB1, 0xC3, 0xB5, 0xE7, 0xC1, 0xF7, 0xA3, 0xBA, 0xCC, 0x33, 0xC3, 0x3C};
+          //气泵电流
+          const unsigned char aucName_56[] = {0xAA, 0x55, 0x02, 0x00, 0x00, 192, 0xC6, 0xF8, 0xB1, 0xC3, 0xB5, 0xE7, 0xC1, 0xF7, 0xA3, 0xBA, 0xCC, 0x33, 0xC3, 0x3C};
+          //气压
+          const unsigned char aucName_57[] = {0xAA, 0x55, 0x02, 0x00, 0x00, 224, 0xC6, 0xF8, 0xD1, 0xB9, 0xA3, 0xBA, 0xCC, 0x33, 0xC3, 0x3C};
+          //水压
+          const unsigned char aucName_58[] = {0xAA, 0x55, 0x02, 0x00, 0x01, 0, 0xCB, 0xAE, 0xD1, 0xB9, 0xA3, 0xBA, 0xCC, 0x33, 0xC3, 0x3C};
+          //风扇速度
+          const unsigned char aucName_59[] = {0xAA, 0x55, 0x02, 0x00, 0x01, 32, 0xB7, 0xE7, 0xC9, 0xC8, 0xCB, 0xD9, 0xB6, 0xC8, 0xA3, 0xBA, 0xCC, 0x33, 0xC3, 0x3C};
+
+          const unsigned char aucName_100[] = {0xAA, 0x54, 0x00, 0x00, 0x02, 0x0D, 0x20, 0x20, 0x20, 0x20, 0x20, 0x20, 0x20, 0x20, 0xBC, 0xD3, 0x89, 0xBA, 0xBB, 0xD8, \
+                                              0xCF, 0xB4, 0x20, 0x20, 0xDC, 0x9B, 0xCB, 0xAE, 0x20, 0x20, 0x20, 0x20, 0xBB, 0xD8, 0xCF, 0xB4, 0x20, 0x20, 0x20, 0x20, \
+                                              0x4C, 0x45, 0x44, 0x20, 0x20, 0x20, 0x20, 0xBF, 0xD5, 0x89, 0xBA, 0x99, 0x43, 0x20, 0xBC, 0xD3, 0x89, 0xBA, 0xF1, 0x52, \
+                                              0xDF, 0x5F, 0x20, 0xCF, 0xB4, 0xDC, 0x87, 0x99, 0x43, 0x20, 0x20, 0xC5, 0xDD, 0xC5, 0xDD, 0x31, 0x20, 0x20, 0x20, 0xC5, \
+                                              0xDD, 0xC5, 0xDD, 0x32, 0x20, 0x20, 0x20, 0xC5, 0xDD, 0xC5, 0xDD, 0x33, 0x20, 0x20, 0x20, 0x20, 0x20, 0x20, 0x20, 0x20, \
+                                              0x20, 0x20, 0x20, 0xE9, 0x6C, 0xE9, 0x54, 0x99, 0x43, 0x20, 0x20, 0x20, 0x20, 0x20, 0x20, 0x20, 0x20, 0x20, 0xCA, 0xD2, \
+                                              0x83, 0xC8, 0x9F, 0xF4, 0x31, 0x20, 0xCA, 0xD2, 0x83, 0xC8, 0x9F, 0xF4, 0x32, 0xCC, 0x33, 0xC3, 0x3C};
+
+          uart_write_bytes((uart_port_t)0, aucName_1, sizeof(aucName_1));
+          delay(1);
+          uart_write_bytes((uart_port_t)0, aucName_2, sizeof(aucName_2));
+          delay(1);
+          uart_write_bytes((uart_port_t)0, aucName_3, sizeof(aucName_3));
+          delay(1);
+          uart_write_bytes((uart_port_t)0, aucName_4, sizeof(aucName_4));
+          delay(1);
+          uart_write_bytes((uart_port_t)0, aucName_5, sizeof(aucName_5));
+          delay(1);
+          uart_write_bytes((uart_port_t)0, aucName_6, sizeof(aucName_6));
+          delay(1);
+          uart_write_bytes((uart_port_t)0, aucName_7, sizeof(aucName_7));
+          delay(1);
+          uart_write_bytes((uart_port_t)0, aucName_8, sizeof(aucName_8));
+          delay(1);
+          uart_write_bytes((uart_port_t)0, aucName_9, sizeof(aucName_9));
+          delay(1);
+          uart_write_bytes((uart_port_t)0, aucName_10, sizeof(aucName_10));
+          delay(1);
+          uart_write_bytes((uart_port_t)0, aucName_11, sizeof(aucName_11));
+          delay(1);
+          uart_write_bytes((uart_port_t)0, aucName_12, sizeof(aucName_12));
+          delay(1);
+          uart_write_bytes((uart_port_t)0, aucName_13, sizeof(aucName_13));
+          delay(1);
+          //uart_write_bytes(0, aucName_14, sizeof(aucName_14));
+          //delay(1);
+          //uart_write_bytes(0, aucName_15, sizeof(aucName_15));
+          //delay(1);
+          //uart_write_bytes(0, aucName_16, sizeof(aucName_16));
+          //delay(1);
+          uart_write_bytes((uart_port_t)0, aucName_50, sizeof(aucName_50));
+          delay(1);
+          //uart_write_bytes(0, aucName_51, sizeof(aucName_51));
+          //delay(1);
+          uart_write_bytes((uart_port_t)0, aucName_52, sizeof(aucName_52));
+          delay(1);
+          uart_write_bytes((uart_port_t)0, aucName_53, sizeof(aucName_53));
+          delay(1);
+          uart_write_bytes((uart_port_t)0, aucName_54, sizeof(aucName_54));
+          delay(1);
+          uart_write_bytes((uart_port_t)0, aucName_55, sizeof(aucName_55));
+          delay(1);
+          uart_write_bytes((uart_port_t)0, aucName_56, sizeof(aucName_56));
+          delay(1);
+          uart_write_bytes((uart_port_t)0, aucName_57, sizeof(aucName_57));
+          delay(1);
+          uart_write_bytes((uart_port_t)0, aucName_58, sizeof(aucName_58));
+          delay(1);
+          uart_write_bytes((uart_port_t)0, aucName_59, sizeof(aucName_59));
+          delay(1);
+
+          uart_write_bytes((uart_port_t)0, aucName_100, sizeof(aucName_100));
+          delay(2);
+          //ESP_LOGI("main", "show param name");
+
+  - id: uart_proc_hex
+    mode: single
+    then:
+      - lambda: |-
+          static switch_::Switch* all_relays[] = {
+            id(relay_01), id(relay_02), id(relay_03), id(relay_04), id(relay_05), id(relay_06), id(relay_07), id(relay_08),
+            id(relay_09), id(relay_10), id(relay_11), id(relay_12), id(relay_13), id(relay_14), id(relay_15), id(relay_16)
+          };
+          unsigned char aucData[2];
+          int iRecvCnt;
+          unsigned char aucTempBuf[${MAX_UART_RECV_BUF_LEN}];
+          int iLength = uart_read_bytes((uart_port_t)0, aucData, 1, 0);
+          if ( iLength > 0 )
+          {
+            id(my_uart_recv_delay) = 0;
+            if ( ((id(my_uart_recv_write) + 1) % ${MAX_UART_RECV_BUF_LEN}) != id(my_uart_recv_read) )
+            {
+              id(my_uart_recv_buf)[id(my_uart_recv_write)] = aucData[0];
+              id(my_uart_recv_write) = ((id(my_uart_recv_write) + 1) % ${MAX_UART_RECV_BUF_LEN});
+            }
+            else
+            {
+              ESP_LOGD("main", "HMI屏幕数据溢出!");               
+            }
+
+            if ( id(my_uart_recv_write) >= id(my_uart_recv_read) )
+            {
+              iRecvCnt = id(my_uart_recv_write) - id(my_uart_recv_read);
+            }
+            else
+            {
+              iRecvCnt = id(my_uart_recv_write) + ${MAX_UART_RECV_BUF_LEN} - id(my_uart_recv_read);
+            }
+            
+            int iPos = id(my_uart_recv_read);
+            memset(aucTempBuf, 0x00, sizeof(aucTempBuf));
+            for ( int iLoop=0; iLoop<iRecvCnt; iLoop++ )
+            {
+              aucTempBuf[iLoop] = id(my_uart_recv_buf)[iPos];
+              iPos = ((iPos + 1) % ${MAX_UART_RECV_BUF_LEN});
+            }
+            if ( iRecvCnt >= 6 )
+            {
+              if ( (aucTempBuf[0] != 0xaa) )
+              {
+                id(my_uart_recv_read) = ((id(my_uart_recv_read) + 1) % ${MAX_UART_RECV_BUF_LEN});
+              }
+              else
+              {
+                if ( iRecvCnt == 6 )
+                {
+                  if ( (aucTempBuf[1] == 0x00) && (aucTempBuf[2] == 0xcc) && (aucTempBuf[3] == 0x33) && (aucTempBuf[4] == 0xc3) && (aucTempBuf[5] == 0x3c) )
+                  {
+                    id(my_uart_recv_read) = ((id(my_uart_recv_read) + 6) % ${MAX_UART_RECV_BUF_LEN});
+                    ESP_LOGD("main", "get HMI response 00"); 
+                    /*int param1,param2,param3;
+                    int iLoop, iIndex;
+                    std::string tmp_str;
+                    int iCnt = 0;
+                    for (const auto& byte : aucTempBuf) 
+                    {
+                        char buffer[3];
+                        snprintf(buffer, sizeof(buffer), "%02x", byte);
+                        tmp_str += buffer;
+                        tmp_str += " ";
+                        iCnt++;
+                        if ( iCnt >= iRecvCnt )
+                        {
+                          break;
+                        }
+                    }
+                    id(global_hmi_recv).publish_state(tmp_str.c_str());*/
+                  }
+                }
+                else if ( iRecvCnt == 8 )
+                {
+                  if ( (aucTempBuf[1] == 0x78) && (aucTempBuf[4] == 0xcc) && (aucTempBuf[5] == 0x33) && (aucTempBuf[6] == 0xc3) && (aucTempBuf[7] == 0x3c) )
+                  {
+                    if ( (aucTempBuf[3] > 0) && (aucTempBuf[3] <= 16) )
+                    {
+                      int iIndex;
+                      iIndex = aucTempBuf[3] - 1;
+                      if ( all_relays[iIndex]->state )
+                      {
+                        all_relays[iIndex]->turn_off();
+                        ESP_LOGI("HMI", "turn off relay %d", iIndex + 1); 
+                      }
+                      else
+                      {
+                        all_relays[iIndex]->turn_on();
+                        ESP_LOGI("HMI", "turn on relay %d", iIndex + 1); 
+                      }
+                    }
+                    else if( (aucTempBuf[3] >= 0x2d) && (aucTempBuf[3] <= 0x2e) )
+                    {
+                      int iIndex;
+                      iIndex = aucTempBuf[3] - 0x2d + 1;
+                      id(washer_send_cmd).execute(iIndex, "HMI", "");
+                    }
+                    else if( (aucTempBuf[3] >= 0x15) && (aucTempBuf[3] <= 0x1c) )
+                    {
+                      int iIndex;
+                      iIndex = aucTempBuf[3] - 0x15 + 1 + 2;
+                      id(washer_send_cmd).execute(iIndex, "HMI", "");
+                    }
+                    else if( (aucTempBuf[3] >= 0x1d) && (aucTempBuf[3] <= 0x26) )
+                    {
+                      if ( id(my_user_code_cnt) < ${USER_CODE_LENGTH} )
+                      {
+                        for ( int iLoop=0; iLoop<${USER_CODE_LENGTH}; iLoop++ )
+                        {
+                          id(my_user_code_buf)[iLoop] = id(my_user_code_buf)[iLoop+1];
+                        }
+                        id(my_user_code_buf)[${USER_CODE_LENGTH}-1] = aucTempBuf[3] - 0x1d + '0';
+                        id(my_user_code_cnt)++;
+                        id(hmi_clear_user_code).execute();
+                        for ( int iLoop=0; iLoop<${USER_CODE_LENGTH}; iLoop++ )
+                        {
+                          id(hmi_show_user_code).execute(224 + iLoop * 82, 176, id(my_user_code_buf)[iLoop]);
+                        }
+                        if ( id(my_wash_running_flag) == 0 ) {
+                          id(hmi_clear_pass_err).execute();
+                        }
+                      }
+                    }
+                    else if( aucTempBuf[3] == 0x27 )
+                    {
+                      id(my_user_code_cnt) = 0;
+                      for ( int iLoop=0; iLoop<${USER_CODE_LENGTH}; iLoop++ )
+                      {
+                        id(my_user_code_buf)[iLoop] = ' ';
+                      }
+                      id(hmi_clear_user_code).execute();
+                      if ( id(my_wash_running_flag) == 0 ) {
+                        id(hmi_clear_pass_err).execute();
+                      }
+                    }
+                    else if( aucTempBuf[3] == 0x28 )
+                    {
+                      if ( id(my_wash_running_flag) == 1 )
+                      {
+                        id(my_wash_running_flag) = 0;
+                        id(hmi_show_page).execute(id(my_hmi_page_index));
+                      }
+                      else
+                      {
+                        if ( (id(my_user_code_buf)[0]=='1') && (id(my_user_code_buf)[1]=='2') && (id(my_user_code_buf)[2]=='3') && (id(my_user_code_buf)[3]=='4') )
+                        {
+                          for ( int iLoop=0; iLoop<${USER_CODE_LENGTH}; iLoop++ )
+                          {
+                            id(my_user_code_buf)[iLoop] = ' ';
+                          }
+                          id(hmi_clear_user_code).execute();
+                          id(my_user_code_cnt) = 0;
+                          id(my_wash_running_flag) = 1;
+                          id(my_wash_timer) = 0;
+                          id(hmi_show_page1_icon).execute(584, 383, 0x3b);
+                        }
+                        else if ( (id(my_user_code_buf)[0]=='9') && (id(my_user_code_buf)[1]=='9') && (id(my_user_code_buf)[2]=='8') && (id(my_user_code_buf)[3]=='8') )
+                        {
+                          id(my_user_code_cnt) = 0;
+                          for ( int iLoop=0; iLoop<${USER_CODE_LENGTH}; iLoop++ )
+                          {
+                            id(my_user_code_buf)[iLoop] = ' ';
+                          }
+                          id(my_page_init_flag) = 0;
+                        }
+                        else
+                        {
+                          ESP_LOGE("HMI", "invalid password"); 
+                          id(hmi_clear_user_code).execute();
+                          id(hmi_show_page1_icon).execute(600, 200, 0x39);
+                        }
+                      }
+                    }
+                    else if( aucTempBuf[3] == 0x2a )
+                    {
+                      id(my_page_init_flag) = 1;
+                    }
+                    id(my_uart_recv_read) = ((id(my_uart_recv_read) + 8) % ${MAX_UART_RECV_BUF_LEN});
+                    ESP_LOGD("main", "get HMI key %d", aucTempBuf[3]);
+                  }
+                }
+                else if ( iRecvCnt > 32 )
+                {
+                  id(my_uart_recv_read) = ((id(my_uart_recv_read) + 1) % ${MAX_UART_RECV_BUF_LEN});
+                }
+              }
+            }
+          }
+          else if ( id(my_uart_recv_delay) > 1 )
+          {
+            if ( id(my_uart_recv_write) != id(my_uart_recv_read) )
+            {
+              ESP_LOGD("main", "HMI recv wrong date, recv_write[%d], recv_read[%d], now reset them", id(my_uart_recv_write), id(my_uart_recv_read)); 
+              id(my_uart_recv_write) = id(my_uart_recv_read);
+            }
+          }
