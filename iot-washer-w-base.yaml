@@ -1104,6 +1104,15 @@ sensor:
     type: seconds
     update_interval: 3s
 
+  # V3 硬件：DC 電源電壓 ADC（GPIO4，attenuation 11db + ×11）
+  - platform: adc
+    pin: GPIO4
+    name: "DC power voltage"
+    update_interval: 6s
+    attenuation: 11db
+    filters:
+      - multiply: 11
+
   - platform: template
     name: "Reboot Count"
     id: reboot_count_sensor
@@ -1360,6 +1369,21 @@ fan:
 switch:
   # v3.16.59: climate_enable_sw 已移除 — 風扇改為全自動（見 fan_run_start interval）
   # v3.16.77: SSR 1-4（GPIO7/15/16/17）完全移除 — V1/V2 硬體層統一無 SSR 輸出
+
+  # V3 硬件：GPIO6 樹莓派復位輸出（自復位，on 後 500ms 自動關）
+  - platform: gpio
+    pin:
+      number: GPIO6
+      mode:
+        output: true
+    id: raspberry_pi_reset
+    name: "树莓派复位"
+    icon: "mdi:restart"
+    restore_mode: ALWAYS_OFF
+    on_turn_on:
+      then:
+        - delay: 500ms
+        - switch.turn_off: raspberry_pi_reset
 
   # v4.0.59: Colorlight kill-switch — 關掉整個 cl.put()，驗證 crash 是否來自 LED HTTP
   #   預設 ON（正常運作）；OFF 時 put() 進入立即 return，完全不創 task/alloc
@@ -1693,6 +1717,15 @@ light:
     chipset: WS2812
     internal: true
 
+  # V3 硬件：GPIO48 板載 WS2812 指示燈（LED_on_board）
+  - platform: esp32_rmt_led_strip
+    name: "LED_on_board"
+    id: light_rgb1
+    pin: GPIO48
+    num_leds: 1
+    rgb_order: GRB
+    chipset: WS2812
+
   # v3.16.59: 移除 status_light_1 (GPIO5) / status_light_2 (GPIO6) 30 顆 WS2812
   # 原因：調整亮度時會導致主板重啟（RMT 中斷 + 記憶體壓力）
   # v4.0.01: ID LED (GPIO40) 與 Network LED (GPIO48) 合併為單顆 GPIO40（見上）
@@ -1701,7 +1734,8 @@ binary_sensor:
   - platform: gpio
     name: "AC Power"
     id: ac_power_lose
-    pin: {number: GPIO4, mode: INPUT_PULLUP}
+    # V3 硬件：GPIO4 已給 DC 電壓 ADC，電源檢測改 GPIO5
+    pin: {number: GPIO5, mode: INPUT_PULLUP}
     on_state:
       then:
         - lambda: |-
@@ -1839,8 +1873,8 @@ binary_sensor:
   - platform: gpio
     id: washer_led_red
     name: "Washer LED Red"
-    # W 硬件：GPIO35 已給 Bubble Liquid 1，紅燈改 GPIO48
-    pin: {number: GPIO48, mode: INPUT_PULLUP, inverted: true}
+    # V3 硬件：紅燈改 GPIO7（GPIO48 給板載 WS2812 LED_on_board）
+    pin: {number: GPIO7, mode: INPUT_PULLUP, inverted: true}
     # v4.0.264: 300ms → 150ms（同 blue 原因，RED 通常穩定，主要為一致性 + 將來短紅燈也能偵測）
     filters: [{delayed_on_off: 150ms}]
     on_state:
