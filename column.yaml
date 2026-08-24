@@ -653,7 +653,7 @@ light:
     rgb_order: GRB
     pin: 38
     id: light_rgb
-    num_leds: 120
+    num_leds: 160
 #    rmt_channel: 0
     chipset: ws2812
     name: "My Light"
