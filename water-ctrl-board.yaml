@@ -75,10 +75,14 @@ uart:
 
 sensor:
   - platform: adc
-    name: DC_24V
     pin: GPIO4
-    id: sensor_adc_1
+    name: "DC power voltage"
+    update_interval: 6s
+    attenuation: 11db
+    filters:
+      - multiply: 11
 
+    
 switch:
   - platform: gpio
     name: GATE_ALL
