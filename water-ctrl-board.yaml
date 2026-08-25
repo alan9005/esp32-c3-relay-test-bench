@@ -117,15 +117,21 @@ switch:
 binary_sensor:
   - platform: gpio
     name: WATER_1_TOP
-    pin: GPIO9
+    pin:
+      number: GPIO9
+      inverted: true
     id: binary_sensor_gpio_1
   - platform: gpio
     name: WATER_1_BOTTOM
-    pin: GPIO10
+    pin:
+      number: GPIO10
+      inverted: true
     id: binary_sensor_gpio_2
   - platform: gpio
     name: WATER_2_TOP
-    pin: GPIO11
+    pin:
+      number: GPIO11
+      inverted: true
     id: binary_sensor_gpio_3
   - platform: gpio
     name: WATER_2_BOTTOM
