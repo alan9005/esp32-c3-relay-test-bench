@@ -81,28 +81,37 @@ sensor:
     attenuation: 11db
     filters:
       - multiply: 11
-
     
 switch:
   - platform: gpio
     name: GATE_ALL
-    pin: GPIO7
+    pin:
+      number: GPIO7
+      inverted: true
     id: switch_gpio_1
   - platform: gpio
     name: GATE_A
-    pin: GPIO15
+    pin:
+      number: GPIO15
+      inverted: true
     id: switch_gpio_2
   - platform: gpio
     name: GATE_B
-    pin: GPIO16
+    pin:
+      number: GPIO16
+      inverted: true
     id: switch_gpio_3
   - platform: gpio
     name: GATE_C
-    pin: GPIO17
+    pin:
+      number: GPIO17
+      inverted: true
     id: switch_gpio_4
   - platform: gpio
     name: GATE_D
-    pin: GPIO18
+    pin:
+      number: GPIO18
+      inverted: true
     id: switch_gpio_5
 
 binary_sensor:
