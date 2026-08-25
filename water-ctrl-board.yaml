@@ -120,38 +120,67 @@ binary_sensor:
     pin:
       number: GPIO9
       inverted: true
+      mode:
+        pullup: true
+        input: true
     id: binary_sensor_gpio_1
   - platform: gpio
     name: WATER_1_BOTTOM
     pin:
       number: GPIO10
       inverted: true
+      mode:
+        input: true
+        pullup: true
     id: binary_sensor_gpio_2
   - platform: gpio
     name: WATER_2_TOP
     pin:
       number: GPIO11
       inverted: true
+      mode:
+        input: true
+        pullup: true
     id: binary_sensor_gpio_3
   - platform: gpio
     name: WATER_2_BOTTOM
-    pin: GPIO12
+    pin:
+      number: GPIO12
+      mode:
+        input: true
+        pullup: true
     id: binary_sensor_gpio_4
   - platform: gpio
     name: WATER_3_TOP
-    pin: GPIO13
+    pin:
+      number: GPIO13
+      mode:
+        input: true
+        pullup: true
     id: binary_sensor_gpio_5
   - platform: gpio
     name: WATER_3_BOTTOM
-    pin: GPIO14
+    pin:
+      number: GPIO14
+      mode:
+        input: true
+        pullup: true
     id: binary_sensor_gpio_6
   - platform: gpio
     name: WATER_4_TOP
-    pin: GPIO21
+    pin:
+      number: GPIO21
+      mode:
+        input: true
+        pullup: true
     id: binary_sensor_gpio_7
   - platform: gpio
     name: WATER_4_BOTTOM
-    pin: GPIO47
+    pin:
+      number: GPIO47
+      mode:
+        input: true
+        pullup: true
     id: binary_sensor_gpio_8
 
 
