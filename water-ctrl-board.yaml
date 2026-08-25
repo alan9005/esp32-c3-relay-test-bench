@@ -62,6 +62,17 @@ text_sensor:
       name: "WiFi MAC Address"
       id: wifi_mac
 
+uart:
+  - id: debug
+    tx_pin: 43
+    rx_pin: 44
+    baud_rate: 115200
+    rx_buffer_size: 256
+  - id: uart_1
+    tx_pin: 20
+    rx_pin: 19
+    baud_rate: 9600
+
 sensor:
   - platform: adc
     name: DC_24V
