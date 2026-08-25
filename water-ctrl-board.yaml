@@ -11,12 +11,9 @@ esp32:
     type: arduino
 logger:
 
-api:
-  encryption:
-    key: "YenisWTpNh5usVjySe4N6PgmxfDIouMVCwbt/hfA6TE="
-
 ota:
   - platform: esphome
+    password: "ee398b7e3b5613075cc1fd992f3d3d55"
 
 wifi:
   ssid: !secret wifi_ssid
