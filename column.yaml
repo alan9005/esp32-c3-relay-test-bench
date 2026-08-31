@@ -547,7 +547,7 @@ binary_sensor:
       mode:
         input: true
         pullup: true
-      inverted: true
+#      inverted: true
     name: "setup mode"
     device_class: safety
 
