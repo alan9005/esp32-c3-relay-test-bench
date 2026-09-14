@@ -4,11 +4,28 @@
 esphome:
   name: esp32-h2-test
   friendly_name: ESP32-H2-test
+  on_boot:
+    # 唤醒后点亮 LED 0.2 秒，随后自动进入省电(深度睡眠)模式
+    then:
+      - output.turn_on: test_led
+      - delay: 0.2s
+      - output.turn_off: test_led
 
 esp32:
   variant: esp32h2
   framework:
     type: esp-idf
+
+# 省电模式：深度睡眠 3 秒后唤醒一次。
+# 未设置 run_duration，设备在启动(完成 on_boot)后立即重新进入深度睡眠。
+deep_sleep:
+  sleep_duration: 3s
+
+# 测试 LED，接在 GPIO15
+output:
+  - platform: gpio
+    pin: GPIO15
+    id: test_led
 
 logger:
 
