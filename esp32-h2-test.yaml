@@ -34,7 +34,7 @@ light:
     pin: GPIO8
     num_leds: 1
     chipset: ws2812
-    channel_colors: GRB
+    rgb_order: GRB
 
 logger:
 
