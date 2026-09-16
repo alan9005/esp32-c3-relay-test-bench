@@ -78,7 +78,9 @@ deep_sleep:
   esp32_ext1_wakeup:
     mode: ANY_LOW
     pins:
-      - GPIO9
+      - number: GPIO9
+        # GPIO9 同时被 binary_sensor 使用，需忽略“引脚被多次使用”的校验
+        ignore_pin_validation_error: true
 
 # 测试 WS2812 LED，数据线接在 GPIO8
 light:
