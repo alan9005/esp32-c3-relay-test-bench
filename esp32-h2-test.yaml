@@ -10,6 +10,30 @@ esp32:
   framework:
     type: esp-idf
 
+# 进入省电按钮 GPIO9（内部上拉）：
+#   正常模式下 GPIO9 拉低 -> 立即进入省电模式（深度睡眠）
+binary_sensor:
+  - platform: gpio
+    pin:
+      number: GPIO9
+      mode:
+        input: true
+        pullup: true
+    id: sleep_button
+    filters:
+      - delayed_on: 50ms
+      - delayed_off: 50ms
+    on_release:  # GPIO9 拉低
+      - deep_sleep.enter: deep_sleep_1
+
+# 省电模式（深度睡眠）：
+#   GPIO10 拉低时通过 EXT1(ANY_LOW) 唤醒，进入正常模式。
+deep_sleep:
+  id: deep_sleep_1
+  esp32_ext1_wakeup:
+    mode: ANY_LOW
+    pins:
+      - GPIO10
 
 # 测试 WS2812 LED，数据线接在 GPIO8
 light:
@@ -32,7 +56,7 @@ interval:
           green: 100%
           blue: 100%
           brightness: 100%
-      - delay: 800ms
+      - delay: 200ms
       - light.turn_off: test_led
 
 logger:
