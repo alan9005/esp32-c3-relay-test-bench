@@ -4,41 +4,14 @@
 esphome:
   name: esp32-h2-test
   friendly_name: ESP32-H2-test
-  on_boot:
-    # 上电时按 GPIO9 初始电平初始化"武装"状态：
-    #   高（冷启动，正常模式）-> 已武装，下次拉低即进入省电
-    #   低（刚被拉低唤醒）     -> 未武装，先等释放(高)再武装
-    - if:
-        condition:
-          binary_sensor.is_on: mode_pin
-        then:
-          - globals.set:
-              id: gpio9_armed
-              value: 'true'
-        else:
-          - globals.set:
-              id: gpio9_armed
-              value: 'false'
 
 esp32:
   variant: esp32h2
   framework:
     type: esp-idf
 
-# 状态变量：
-#   gpio9_armed         - GPIO9 释放(高)后置 true
-#   gpio9_sleep_pending - 正常模式下已检测到拉低，等待释放后真正入睡
-globals:
-  - id: gpio9_armed
-    type: bool
-    initial_value: 'false'
-  - id: gpio9_sleep_pending
-    type: bool
-    initial_value: 'false'
-
-# 模式切换引脚 GPIO9（内部上拉，建议外接上拉到 3.3V）：
-#   正常模式：拉低请求进入省电，释放(高)后真正进入深度睡眠
-#   省电模式：拉低即唤醒，进入正常模式
+# 进入省电按钮 GPIO9（内部上拉）：
+#   正常模式下 GPIO9 拉低 -> 立即进入省电模式（深度睡眠）
 binary_sensor:
   - platform: gpio
     pin:
@@ -46,41 +19,21 @@ binary_sensor:
       mode:
         input: true
         pullup: true
-    id: mode_pin
+    id: sleep_button
     filters:
       - delayed_on: 50ms
       - delayed_off: 50ms
-    on_release:  # GPIO9 被拉低（按下）
-      - if:
-          condition:
-            lambda: 'return id(gpio9_armed);'
-          then:
-            - globals.set:
-                id: gpio9_sleep_pending
-                value: 'true'
-    on_press:    # GPIO9 释放回高电平
-      - if:
-          condition:
-            lambda: 'return id(gpio9_sleep_pending);'
-          then:
-            # 释放时引脚已为高，进入睡眠不会被立即唤醒
-            - deep_sleep.enter: deep_sleep_1
-          else:
-            - globals.set:
-                id: gpio9_armed
-                value: 'true'
+    on_release:  # GPIO9 拉低
+      - deep_sleep.enter: deep_sleep_1
 
 # 省电模式（深度睡眠）：
-#   GPIO9 拉低时通过 EXT1(ANY_LOW) 唤醒；
-#   正常模式下由 GPIO9 按键（释放后）调用 deep_sleep.enter 进入睡眠。
+#   GPIO10 拉低时通过 EXT1(ANY_LOW) 唤醒，进入正常模式。
 deep_sleep:
   id: deep_sleep_1
   esp32_ext1_wakeup:
     mode: ANY_LOW
     pins:
-      - number: GPIO9
-        # GPIO9 同时被 binary_sensor 使用，需忽略“引脚被多次使用”的校验
-        ignore_pin_validation_error: true
+      - GPIO10
 
 # 测试 WS2812 LED，数据线接在 GPIO8
 light:
