@@ -71,8 +71,8 @@ binary_sensor:
                 value: 'true'
 
 # 省电模式（深度睡眠）：
-#   GPIO9 拉低时通过 EXT1(ANY_LOW) 唤醒；由 interval 检测到
-#   GPIO9 高电平时调用 deep_sleep.enter 进入睡眠。
+#   GPIO9 拉低时通过 EXT1(ANY_LOW) 唤醒；
+#   正常模式下由 GPIO9 按键（释放后）调用 deep_sleep.enter 进入睡眠。
 deep_sleep:
   id: deep_sleep_1
   esp32_ext1_wakeup:
