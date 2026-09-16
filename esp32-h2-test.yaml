@@ -5,11 +5,16 @@ esphome:
   name: esp32-h2-test
   friendly_name: ESP32-H2-test
   on_boot:
-    # 唤醒后点亮 LED 0.2 秒，随后自动进入省电(深度睡眠)模式
+    # 唤醒后点亮 WS2812 LED 0.2 秒，随后自动进入省电(深度睡眠)模式
     then:
-      - output.turn_on: test_led
+      - light.turn_on:
+          id: test_led
+          red: 100%
+          green: 100%
+          blue: 100%
+          brightness: 100%
       - delay: 0.2s
-      - output.turn_off: test_led
+      - light.turn_off: test_led
 
 esp32:
   variant: esp32h2
@@ -21,11 +26,16 @@ esp32:
 deep_sleep:
   sleep_duration: 3s
 
-# 测试 LED，接在 GPIO15
-output:
-  - platform: gpio
-    pin: GPIO15
+# 测试 WS2812 LED，数据线接在 GPIO8
+light:
+  - platform: esp32_rmt_led_strip
     id: test_led
+    name: "Test LED"
+    pin: GPIO8
+    num_leds: 1
+    rmt_channel: 0
+    chipset: ws2812
+    rgb_order: GRB
 
 logger:
 
