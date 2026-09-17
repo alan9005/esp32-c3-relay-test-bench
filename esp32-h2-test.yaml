@@ -37,6 +37,7 @@ deep_sleep:
     pins:
       - GPIO10
 
+        
 # 测试 WS2812 LED，数据线接在 GPIO8
 light:
   - platform: esp32_rmt_led_strip
