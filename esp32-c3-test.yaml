@@ -54,7 +54,5 @@ display:
     dio_pin: GPIO5
     id: display_tm1637_1
 
-output:
-  - platform: gpio
-    pin: GPIO6
-    id: output_buzzer
+rtttl:
+  - id: rtttl_1
