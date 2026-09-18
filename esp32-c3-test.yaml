@@ -56,3 +56,9 @@ display:
 
 rtttl:
   - id: rtttl_1
+    output: output_ledc_1
+
+output:
+  - platform: ledc
+    pin: GPIO6
+    id: output_ledc_1
