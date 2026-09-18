@@ -27,3 +27,34 @@ wifi:
     password: "iYtKDpdejy5r"
 
 captive_portal:
+
+sensor:
+  - platform: adc
+    pin: GPIO0
+    id: sensor_adc_1
+  - platform: dht
+    pin: GPIO1
+    humidity:
+      id: sensor_dht_1_humidity
+      name: Humidity
+    temperature:
+      id: sensor_dht_1_temperature
+      name: Temperature
+    id: sensor_dht_1
+
+switch:
+  - platform: gpio
+    name: door
+    pin: GPIO3
+    id: switch_gpio_1
+
+display:
+  - platform: tm1637
+    clk_pin: GPIO4
+    dio_pin: GPIO5
+    id: display_tm1637_1
+
+output:
+  - platform: gpio
+    pin: GPIO6
+    id: output_buzzer
