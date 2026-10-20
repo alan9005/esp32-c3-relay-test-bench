@@ -196,3 +196,12 @@ light:
     chipset: WS2812
     num_leds: 1
     rgb_order: GRB
+
+  - platform: esp32_rmt_led_strip
+    rgb_order: GRB
+    pin: GPIO48
+    id: light_rgb1
+    num_leds: 1
+#    rmt_channel: 1
+    chipset: ws2812
+    name: "LED_on_board"
