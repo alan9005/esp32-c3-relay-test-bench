@@ -195,4 +195,4 @@ light:
     id: light_esp32_rmt_led_strip_1
     chipset: WS2812
     num_leds: 1
-    rgb_order: RGB
+    rgb_order: RBG
