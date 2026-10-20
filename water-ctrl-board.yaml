@@ -189,13 +189,13 @@ binary_sensor:
     id: binary_sensor_gpio_8
 
 light:
-  - platform: esp32_rmt_led_strip
-    name: run light
-    pin: GPIO6
-    id: light_esp32_rmt_led_strip_1
-    chipset: WS2812
-    num_leds: 1
-    rgb_order: GRB
+#  - platform: esp32_rmt_led_strip
+#    name: run light
+#    pin: GPIO6
+#    id: light_esp32_rmt_led_strip_1
+#    chipset: WS2812
+#    num_leds: 1
+#    rgb_order: GRB
 
   - platform: esp32_rmt_led_strip
     rgb_order: GRB
