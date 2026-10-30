@@ -1,0 +1,29 @@
+# Board: Generic ESP32-S3 Board (Generic)
+# Definition: definitions/boards/generic-esp32s3/manifest.yaml
+
+esphome:
+  name: iot-gateway
+  friendly_name: iot-gateway
+
+esp32:
+  variant: esp32s3
+  framework:
+    type: esp-idf
+
+logger:
+
+api:
+  encryption:
+    key: "WA+7Ix4exYrbhR7OCfCS6xT4/E2tokHP5ieTwHCmAXc="
+
+ota:
+  - platform: esphome
+
+wifi:
+  ssid: !secret wifi_ssid
+  password: !secret wifi_password
+  ap:
+    ssid: iot-gateway Fallback Hotspot
+    password: "djW4ao1LiS0W"
+
+captive_portal:
