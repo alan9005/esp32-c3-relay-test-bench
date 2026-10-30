@@ -67,7 +67,7 @@ wifi:
               char buffer[64];
               memset(buffer, 0x00, sizeof(buffer));
               snprintf(buffer, sizeof(buffer), "wifi connected, IP Address: %s\r\n", WiFi.localIP().toString().c_str());
-              uart_write_bytes(0, buffer, strlen(buffer));
+              uart_write_bytes((uart_port_t)0, buffer, strlen(buffer));
            }
   # Enable fallback hotspot (captive portal) in case wifi connection fails
   ap:
@@ -248,7 +248,7 @@ text:
             if ( iCnt > 0 )
             {
               ESP_LOGD("main", "iCnt[%d],0x%02x,0x%02x", iCnt, acValue[0], acValue[1]); 
-              uart_write_bytes(1, acValue, iCnt);
+              uart_write_bytes((uart_port_t)1, acValue, iCnt);
             }
 
   - platform: template
@@ -457,7 +457,7 @@ script:
             }
           }
           aucTempBuf[iLoop] = crc;
-          uart_write_bytes(1, aucTempBuf, 12+1);
+          uart_write_bytes((uart_port_t)1, aucTempBuf, 12+1);
           ESP_LOGI("main", "send cmd[%d] to [%02x %02x %02x]", aucTempBuf[5], aucTempBuf[2], aucTempBuf[3], aucTempBuf[4]);
 
   - id: uart_send_cmd_1_param
@@ -497,7 +497,7 @@ script:
             }
           }
           aucTempBuf[iLoop] = crc;
-          uart_write_bytes(1, aucTempBuf, 7+1);
+          uart_write_bytes((uart_port_t)1, aucTempBuf, 7+1);
           ESP_LOGI("main", "send cmd[%d] to [%02x %02x %02x]", aucTempBuf[5], aucTempBuf[2], aucTempBuf[3], aucTempBuf[4]);
 
   - id: uart_proc_hex
@@ -507,7 +507,7 @@ script:
           unsigned char aucData[2];
           int iRecvCnt;
           unsigned char aucTempBuf[${MAX_UART_RECV_BUF_LEN}];
-          int iLength = uart_read_bytes(1, aucData, 1, 0);
+          int iLength = uart_read_bytes((uart_port_t)1, aucData, 1, 0);
           if ( iLength > 0 )
           {
             id(my_uart_recv_delay) = 0;
