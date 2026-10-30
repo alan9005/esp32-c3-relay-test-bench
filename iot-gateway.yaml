@@ -63,12 +63,21 @@ wifi:
 #        id: uart_debug
 #        data: "on_connect\r\n"
     - lambda: |-
+       {
+          char buffer[64];
+          memset(buffer, 0x00, sizeof(buffer));
           {
-              char buffer[64];
-              memset(buffer, 0x00, sizeof(buffer));
-              snprintf(buffer, sizeof(buffer), "wifi connected, IP Address: %s\r\n", WiFi.localIP().toString().c_str());
-              uart_write_bytes((uart_port_t)0, buffer, strlen(buffer));
-           }
+            char ip_buf[esphome::network::IP_ADDRESS_BUFFER_SIZE];
+            for (auto &ip : esphome::wifi::global_wifi_component->get_ip_addresses()) {
+              if (ip.is_ip4()) {
+                ip.str_to(ip_buf);
+                snprintf(buffer, sizeof(buffer), "IP Address: %s\r\n", ip_buf);
+                uart_write_bytes((uart_port_t) 0, buffer, strlen(buffer));
+                break;
+              }
+            }
+          }
+       }
   # Enable fallback hotspot (captive portal) in case wifi connection fails
   ap:
     ssid: "Controller Fallback Hotspot"
