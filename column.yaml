@@ -773,43 +773,82 @@ script:
     mode: single
     then:
       - if:
-          condition: 
+          condition:
             - script.is_running: move_down
           then:
             - script.stop: move_down
+            - output.turn_off: gpio_ctrl_down
       - lambda: 'id(my_global_action_time) = period_timeout/10;'
       - lambda: 'id(my_global_move_check_lost_cnt) = 0;'
-      - lambda: 'id(my_global_lost_cnt) = 50 / (period_on);'
-      - while:
+      - lambda: |-
+          if ( period_on > 0 )
+          {
+            id(my_global_lost_cnt) = 50 / period_on;
+          }
+          else
+          {
+            id(my_global_lost_cnt) = 5;
+          }
+          if ( id(my_global_lost_cnt) == 0 )
+          {
+            id(my_global_lost_cnt) = 1;
+          }
+      - if:
           condition:
-            lambda: 'return (id(my_global_action_time) > 0);'
+            lambda: 'return (period_off == 0);'
           then:
             - output.turn_on: gpio_ctrl_up
             - output.turn_on: gpio_run_led
-            - delay: !lambda "return period_on;"
+            - while:
+                condition:
+                  lambda: 'return (id(my_global_action_time) > 0);'
+                then:
+                  - delay: !lambda "return (period_on > 0) ? period_on : 20;"
+                  - lambda: |-
+                      if ( id(my_global_move_flag) != 0 )
+                      {
+                        id(my_global_move_flag) = 0;
+                        id(my_global_move_check_lost_cnt) = 0;
+                      }
+                      else
+                      {
+                        id(my_global_move_check_lost_cnt)++;
+                        if ( id(my_global_move_check_lost_cnt) > id(my_global_lost_cnt) )
+                        {
+                          ESP_LOGI("main", "my_global_move_check_lost_cnt %d", id(my_global_move_check_lost_cnt));
+                          id(my_global_move_check_lost_cnt) = 0;
+                          id(my_global_action_time) = 0;
+                        }
+                      }
             - output.turn_off: gpio_ctrl_up
             - output.turn_off: gpio_run_led
-            - delay: !lambda "return period_off;"
-            - lambda: |-
-                if ( id(my_global_lost_cnt) == 0 )
-                {
-                  id(my_global_lost_cnt) = 1;
-                }
-                if ( id(my_global_move_flag) != 0 )
-                {
-                  id(my_global_move_flag) = 0;
-                  id(my_global_move_check_lost_cnt) = 0;
-                }
-                else
-                {
-                  id(my_global_move_check_lost_cnt)++;
-                  if ( id(my_global_move_check_lost_cnt) > id(my_global_lost_cnt) )
-                  {
-                    ESP_LOGI("main", "my_global_move_check_lost_cnt %d", id(my_global_move_check_lost_cnt));            
-                    id(my_global_move_check_lost_cnt) = 0;
-                    id(move_up).stop();
-                  }
-                }
+          else:
+            - while:
+                condition:
+                  lambda: 'return (id(my_global_action_time) > 0);'
+                then:
+                  - output.turn_on: gpio_ctrl_up
+                  - output.turn_on: gpio_run_led
+                  - delay: !lambda "return period_on;"
+                  - output.turn_off: gpio_ctrl_up
+                  - output.turn_off: gpio_run_led
+                  - delay: !lambda "return period_off;"
+                  - lambda: |-
+                      if ( id(my_global_move_flag) != 0 )
+                      {
+                        id(my_global_move_flag) = 0;
+                        id(my_global_move_check_lost_cnt) = 0;
+                      }
+                      else
+                      {
+                        id(my_global_move_check_lost_cnt)++;
+                        if ( id(my_global_move_check_lost_cnt) > id(my_global_lost_cnt) )
+                        {
+                          ESP_LOGI("main", "my_global_move_check_lost_cnt %d", id(my_global_move_check_lost_cnt));
+                          id(my_global_move_check_lost_cnt) = 0;
+                          id(move_up).stop();
+                        }
+                      }
 
   - id: play_music
     mode: single
@@ -827,43 +866,82 @@ script:
     mode: single
     then:
       - if:
-          condition: 
+          condition:
             - script.is_running: move_up
           then:
             - script.stop: move_up
+            - output.turn_off: gpio_ctrl_up
       - lambda: 'id(my_global_action_time) = period_timeout/10;'
       - lambda: 'id(my_global_move_check_lost_cnt) = 0;'
-      - lambda: 'id(my_global_lost_cnt) = 50 / (period_on);'
-      - while:
+      - lambda: |-
+          if ( period_on > 0 )
+          {
+            id(my_global_lost_cnt) = 50 / period_on;
+          }
+          else
+          {
+            id(my_global_lost_cnt) = 5;
+          }
+          if ( id(my_global_lost_cnt) == 0 )
+          {
+            id(my_global_lost_cnt) = 1;
+          }
+      - if:
           condition:
-            lambda: 'return (id(my_global_action_time) > 0);'
+            lambda: 'return (period_off == 0);'
           then:
             - output.turn_on: gpio_ctrl_down
             - output.turn_on: gpio_run_led
-            - delay: !lambda "return period_on;"
+            - while:
+                condition:
+                  lambda: 'return (id(my_global_action_time) > 0);'
+                then:
+                  - delay: !lambda "return (period_on > 0) ? period_on : 20;"
+                  - lambda: |-
+                      if ( id(my_global_move_flag) != 0 )
+                      {
+                        id(my_global_move_flag) = 0;
+                        id(my_global_move_check_lost_cnt) = 0;
+                      }
+                      else
+                      {
+                        id(my_global_move_check_lost_cnt)++;
+                        if ( id(my_global_move_check_lost_cnt) > id(my_global_lost_cnt) )
+                        {
+                          ESP_LOGI("main", "my_global_move_check_lost_cnt %d", id(my_global_move_check_lost_cnt));
+                          id(my_global_move_check_lost_cnt) = 0;
+                          id(my_global_action_time) = 0;
+                        }
+                      }
             - output.turn_off: gpio_ctrl_down
             - output.turn_off: gpio_run_led
-            - delay: !lambda "return period_off;"
-            - lambda: |-
-                if ( id(my_global_lost_cnt) == 0 )
-                {
-                  id(my_global_lost_cnt) = 1;
-                }
-                if ( id(my_global_move_flag) != 0 )
-                {
-                  id(my_global_move_flag) = 0;
-                  id(my_global_move_check_lost_cnt) = 0;
-                }
-                else
-                {
-                  id(my_global_move_check_lost_cnt)++;
-                  if ( id(my_global_move_check_lost_cnt) > id(my_global_lost_cnt) )
-                  {
-                    ESP_LOGI("main", "my_global_move_check_lost_cnt %d", id(my_global_move_check_lost_cnt));            
-                    id(my_global_move_check_lost_cnt) = 0;
-                    id(move_down).stop();
-                  }
-                }
+          else:
+            - while:
+                condition:
+                  lambda: 'return (id(my_global_action_time) > 0);'
+                then:
+                  - output.turn_on: gpio_ctrl_down
+                  - output.turn_on: gpio_run_led
+                  - delay: !lambda "return period_on;"
+                  - output.turn_off: gpio_ctrl_down
+                  - output.turn_off: gpio_run_led
+                  - delay: !lambda "return period_off;"
+                  - lambda: |-
+                      if ( id(my_global_move_flag) != 0 )
+                      {
+                        id(my_global_move_flag) = 0;
+                        id(my_global_move_check_lost_cnt) = 0;
+                      }
+                      else
+                      {
+                        id(my_global_move_check_lost_cnt)++;
+                        if ( id(my_global_move_check_lost_cnt) > id(my_global_lost_cnt) )
+                        {
+                          ESP_LOGI("main", "my_global_move_check_lost_cnt %d", id(my_global_move_check_lost_cnt));
+                          id(my_global_move_check_lost_cnt) = 0;
+                          id(move_down).stop();
+                        }
+                      }
 
   - id: uart_proc_hex
     mode: single
