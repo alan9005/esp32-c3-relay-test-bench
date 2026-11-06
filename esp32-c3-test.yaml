@@ -24,8 +24,7 @@ wifi:
   password: !secret wifi_password
   ap:
     ssid: ESP32-C3-test Fallback Hotspot
-    password: "iYtKDpdejy5r"
-
+    password: "12345678"
 captive_portal:
 
 sensor:
