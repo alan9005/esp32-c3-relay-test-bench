@@ -25,8 +25,13 @@ wifi:
   ap:
     ssid: ESP32-C3-test Fallback Hotspot
     password: "12345678"
+
+web_server:
+  port: 80
+
 captive_portal:
 
+  
 sensor:
   - platform: adc
     pin: GPIO0
