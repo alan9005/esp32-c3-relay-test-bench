@@ -66,3 +66,7 @@ output:
   - platform: ledc
     pin: GPIO6
     id: output_ledc_1
+
+esp32_ble_beacon:
+  type: IBEACON
+  uuid: b18e3b6c-ccb7-4308-b527-35e5e6ee2145
