@@ -655,7 +655,7 @@ light:
     id: light_rgb
     num_leds: 7
 #    rmt_channel: 0
-    chipset: ws2812
+    chipset: SK6812
     name: "My Light"
     effects:
       - pulse:
