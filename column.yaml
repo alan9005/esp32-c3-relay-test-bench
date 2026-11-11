@@ -651,7 +651,11 @@ rtttl:
 light:
   - platform: esp32_rmt_led_strip
     rgb_order: GRB
-    pin: 38
+    pin:
+      number: "38"
+      mode:
+        open_drain: true
+        output: true
     id: light_rgb
     num_leds: 160
 #    rmt_channel: 0
