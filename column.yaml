@@ -654,7 +654,7 @@ light:
     pin:
       number: "38"
       mode:
-        open_drain: true
+        open_drain: false
         output: true
         pullup: false
         input: false
