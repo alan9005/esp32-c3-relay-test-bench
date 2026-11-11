@@ -657,11 +657,11 @@ light:
         open_drain: true
         output: true
         pullup: false
-        input: true
+        input: false
     id: light_rgb
-    num_leds: 160
+    num_leds: 20
 #    rmt_channel: 0
-    chipset: ws2812
+    chipset: SK6812
     name: "My Light"
     effects:
       - pulse:
@@ -721,6 +721,7 @@ light:
       - !include effects/wipe_in.yaml
       - !include effects/wipe_out.yaml
 
+    is_rgbw: true
 uart:
   - id: debug
     tx_pin: 43
