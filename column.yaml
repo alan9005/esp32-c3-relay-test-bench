@@ -656,7 +656,7 @@ light:
       mode:
         open_drain: true
         output: true
-        pullup: true
+        pullup: false
     id: light_rgb
     num_leds: 160
 #    rmt_channel: 0
