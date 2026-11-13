@@ -659,7 +659,7 @@ light:
         pulldown: false
         input: false
     id: light_rgb
-    num_leds: 10
+    num_leds: 30
 #    rmt_channel: 0
     chipset: WS2812
     name: "My Light"
