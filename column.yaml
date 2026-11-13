@@ -654,13 +654,13 @@ light:
     pin:
       number: "38"
       mode:
-        open_drain: false
+        open_drain: true
         output: true
-        pulldown: true
+        pulldown: false
     id: light_rgb
     num_leds: 10
 #    rmt_channel: 0
-    chipset: ws2812
+    chipset: WS2812
     name: "My Light"
     effects:
       - pulse:
