@@ -650,7 +650,7 @@ rtttl:
 
 light:
   - platform: esp32_rmt_led_strip
-    rgb_order: RGB
+    rgb_order: GRB
     pin:
       number: "38"
       mode:
@@ -661,7 +661,7 @@ light:
     id: light_rgb
     num_leds: 10
 #    rmt_channel: 0
-    chipset: WS2812
+    chipset: SK6812
     name: "My Light"
     effects:
       - pulse:
@@ -721,8 +721,8 @@ light:
       - !include effects/wipe_in.yaml
       - !include effects/wipe_out.yaml
 
-    is_rgbw: false
-    is_wrgb: true
+    is_rgbw: true
+    is_wrgb: false
 uart:
   - id: debug
     tx_pin: 43
