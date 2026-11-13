@@ -721,7 +721,8 @@ light:
       - !include effects/wipe_in.yaml
       - !include effects/wipe_out.yaml
 
-    is_rgbw: true
+    is_rgbw: false
+    is_wrgb: true
 uart:
   - id: debug
     tx_pin: 43
