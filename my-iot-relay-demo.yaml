@@ -1,5 +1,11 @@
 # Board: Generic ESP32-S3 Board (Generic)
 # Definition: definitions/boards/generic-esp32s3/manifest.yaml
+#
+# 16 路继电器控制板（Modbus RTU 主站）
+#   - RS485 总线: TXD=GPIO1, RXD=GPIO2, 9600 8N1, 从站地址 100
+#   - WiFi 连接后每 5 秒从调试串口(USB)输出本机 IP / MAC
+#   - GPIO48 WS2812 网络状态灯:
+#       绿色常亮 = WiFi 已连接 / 黄色呼吸 = 连接中 / 蓝色快闪 = AP 配网模式
 
 esphome:
   name: my-iot-relay-demo
@@ -18,12 +24,472 @@ api:
 
 ota:
   - platform: esphome
+  # 让 web_server 页面显示 OTA 上传按钮（见 repo 升级笔记）
+  - platform: web_server
 
 wifi:
   ssid: !secret wifi_ssid
   password: !secret wifi_password
   ap:
-    ssid: my-iot-relay-de Fallback Hotspot
+    ssid: my-iot-relay-demo Fallback Hotspot
     password: "So6sCTVk4OAs"
+  on_connect:
+    - lambda: |-
+        ESP_LOGI("network", "WiFi connected");
+        {
+          char ip_buf[esphome::network::IP_ADDRESS_BUFFER_SIZE];
+          for (auto &ip : esphome::wifi::global_wifi_component->get_ip_addresses()) {
+            if (ip.is_ip4()) {
+              ip.str_to(ip_buf);
+              ESP_LOGI("network", "IP Address: %s", ip_buf);
+              break;
+            }
+          }
+        }
+        id(net_status_led).turn_on().set_rgb(0.0f, 1.0f, 0.0f).set_effect("None").set_brightness(0.4f).perform();
+  on_disconnect:
+    - lambda: |-
+        ESP_LOGW("network", "WiFi disconnected");
+        id(net_status_led).turn_on().set_rgb(1.0f, 0.8f, 0.0f).set_effect("connecting_pulse").perform();
 
 captive_portal:
+
+web_server:
+  port: 80
+  version: 2
+  js_include: "web/relay_dashboard.js"
+  css_include: "web/relay_dashboard.css"
+
+uart:
+  - id: uart_1
+    tx_pin: GPIO1
+    rx_pin: GPIO2
+    baud_rate: 9600
+    data_bits: 8
+    stop_bits: 1
+    parity: NONE
+    rx_buffer_size: 256
+
+modbus:
+  - uart_id: uart_1
+    id: modbus_1
+
+modbus_controller:
+  - id: modbus_relay
+    address: 100
+    modbus_id: modbus_1
+    setup_priority: -5
+    update_interval: 10s
+    command_throttle: 100ms
+    offline_skip_updates: 5
+
+interval:
+  # WiFi 连接后，每 5 秒从调试串口输出本机 IP / MAC
+  - interval: 5s
+    then:
+      - lambda: |-
+          if (esphome::wifi::global_wifi_component->is_connected()) {
+            ESP_LOGI("network", "IP Address: %s", id(wifi_ip).state.c_str());
+            ESP_LOGI("network", "MAC Address: %s", id(wifi_mac).state.c_str());
+          }
+  # 网络状态灯状态机（1s 轮询，状态变化才刷新）
+  - interval: 1s
+    then:
+      - lambda: |-
+          int s;
+          if (esphome::wifi::global_wifi_component->is_connected()) {
+            s = 2;  // 绿色常亮
+          } else if (esphome::wifi::global_wifi_component->is_ap_active()) {
+            s = 3;  // 蓝色快闪
+          } else {
+            s = 1;  // 黄色呼吸
+          }
+          if (s != id(net_led_state)) {
+            id(net_led_state) = s;
+            if (s == 2) {
+              id(net_status_led).turn_on().set_rgb(0.0f, 1.0f, 0.0f).set_effect("None").set_brightness(0.4f).perform();
+            } else if (s == 3) {
+              id(net_status_led).turn_on().set_effect("ap_blink").perform();
+            } else {
+              id(net_status_led).turn_on().set_rgb(1.0f, 0.8f, 0.0f).set_effect("connecting_pulse").perform();
+            }
+          }
+
+globals:
+  - id: net_led_state
+    type: int
+    restore_value: no
+    initial_value: '-1'
+
+text_sensor:
+  - platform: wifi_info
+    ip_address:
+      name: "WiFi IP Address"
+      id: wifi_ip
+    mac_address:
+      name: "WiFi MAC Address"
+      id: wifi_mac
+
+light:
+  - platform: esp32_rmt_led_strip
+    rgb_order: GRB
+    pin: GPIO48
+    id: net_status_led
+    num_leds: 1
+    chipset: ws2812
+    name: "网络状态灯"
+    internal: true
+    effects:
+      - pulse:
+          name: "connecting_pulse"
+          transition_length: 0.6s
+          update_interval: 0.6s
+          min_brightness: 8%
+          max_brightness: 100%
+      - strobe:
+          name: "ap_blink"
+          colors:
+            - state: true
+              brightness: 100%
+              red: 0%
+              green: 0%
+              blue: 100%
+              duration: 120ms
+            - state: false
+              duration: 120ms
+
+switch:
+  # ── 16 路继电器（保持寄存器 0~15，写 0=关 / 1=开） ──
+  # restore_mode: DISABLED 避免开机时向板卡写入默认状态（上电状态由板卡寄存器 204 决定）
+  - platform: modbus_controller
+    modbus_controller_id: modbus_relay
+    name: "继电器 01"
+    id: relay_01
+    register_type: holding
+    address: 0
+    bitmask: 1
+    restore_mode: DISABLED
+    icon: "mdi:toggle-switch"
+  - platform: modbus_controller
+    modbus_controller_id: modbus_relay
+    name: "继电器 02"
+    id: relay_02
+    register_type: holding
+    address: 1
+    bitmask: 1
+    restore_mode: DISABLED
+    icon: "mdi:toggle-switch"
+  - platform: modbus_controller
+    modbus_controller_id: modbus_relay
+    name: "继电器 03"
+    id: relay_03
+    register_type: holding
+    address: 2
+    bitmask: 1
+    restore_mode: DISABLED
+    icon: "mdi:toggle-switch"
+  - platform: modbus_controller
+    modbus_controller_id: modbus_relay
+    name: "继电器 04"
+    id: relay_04
+    register_type: holding
+    address: 3
+    bitmask: 1
+    restore_mode: DISABLED
+    icon: "mdi:toggle-switch"
+  - platform: modbus_controller
+    modbus_controller_id: modbus_relay
+    name: "继电器 05"
+    id: relay_05
+    register_type: holding
+    address: 4
+    bitmask: 1
+    restore_mode: DISABLED
+    icon: "mdi:toggle-switch"
+  - platform: modbus_controller
+    modbus_controller_id: modbus_relay
+    name: "继电器 06"
+    id: relay_06
+    register_type: holding
+    address: 5
+    bitmask: 1
+    restore_mode: DISABLED
+    icon: "mdi:toggle-switch"
+  - platform: modbus_controller
+    modbus_controller_id: modbus_relay
+    name: "继电器 07"
+    id: relay_07
+    register_type: holding
+    address: 6
+    bitmask: 1
+    restore_mode: DISABLED
+    icon: "mdi:toggle-switch"
+  - platform: modbus_controller
+    modbus_controller_id: modbus_relay
+    name: "继电器 08"
+    id: relay_08
+    register_type: holding
+    address: 7
+    bitmask: 1
+    restore_mode: DISABLED
+    icon: "mdi:toggle-switch"
+  - platform: modbus_controller
+    modbus_controller_id: modbus_relay
+    name: "继电器 09"
+    id: relay_09
+    register_type: holding
+    address: 8
+    bitmask: 1
+    restore_mode: DISABLED
+    icon: "mdi:toggle-switch"
+  - platform: modbus_controller
+    modbus_controller_id: modbus_relay
+    name: "继电器 10"
+    id: relay_10
+    register_type: holding
+    address: 9
+    bitmask: 1
+    restore_mode: DISABLED
+    icon: "mdi:toggle-switch"
+  - platform: modbus_controller
+    modbus_controller_id: modbus_relay
+    name: "继电器 11"
+    id: relay_11
+    register_type: holding
+    address: 10
+    bitmask: 1
+    restore_mode: DISABLED
+    icon: "mdi:toggle-switch"
+  - platform: modbus_controller
+    modbus_controller_id: modbus_relay
+    name: "继电器 12"
+    id: relay_12
+    register_type: holding
+    address: 11
+    bitmask: 1
+    restore_mode: DISABLED
+    icon: "mdi:toggle-switch"
+  - platform: modbus_controller
+    modbus_controller_id: modbus_relay
+    name: "继电器 13"
+    id: relay_13
+    register_type: holding
+    address: 12
+    bitmask: 1
+    restore_mode: DISABLED
+    icon: "mdi:toggle-switch"
+  - platform: modbus_controller
+    modbus_controller_id: modbus_relay
+    name: "继电器 14"
+    id: relay_14
+    register_type: holding
+    address: 13
+    bitmask: 1
+    restore_mode: DISABLED
+    icon: "mdi:toggle-switch"
+  - platform: modbus_controller
+    modbus_controller_id: modbus_relay
+    name: "继电器 15"
+    id: relay_15
+    register_type: holding
+    address: 14
+    bitmask: 1
+    restore_mode: DISABLED
+    icon: "mdi:toggle-switch"
+  - platform: modbus_controller
+    modbus_controller_id: modbus_relay
+    name: "继电器 16"
+    id: relay_16
+    register_type: holding
+    address: 15
+    bitmask: 1
+    restore_mode: DISABLED
+    icon: "mdi:toggle-switch"
+
+  # ── 全部继电器开关（寄存器 52: 0=全关 / 1=全开） ──
+  - platform: template
+    name: "全部继电器"
+    id: all_relays
+    icon: "mdi:power"
+    optimistic: true
+    on_turn_on:
+      - lambda: |-
+          auto cmd = esphome::modbus_controller::ModbusCommandItem::create_write_single_command(id(modbus_relay), 52, 1);
+          id(modbus_relay)->queue_command(cmd);
+          ESP_LOGI("relay", "全部继电器: 开");
+    on_turn_off:
+      - lambda: |-
+          auto cmd = esphome::modbus_controller::ModbusCommandItem::create_write_single_command(id(modbus_relay), 52, 0);
+          id(modbus_relay)->queue_command(cmd);
+          ESP_LOGI("relay", "全部继电器: 关");
+
+select:
+  # 寄存器 51: 1=9600 / 3=19200 / 4=38400 / 6=57600 / 7=115200
+  - platform: template
+    name: "波特率设置"
+    id: baud_rate_select
+    options:
+      - "9600"
+      - "19200"
+      - "38400"
+      - "57600"
+      - "115200"
+    initial_option: "9600"
+    optimistic: true
+    on_value:
+      then:
+        - lambda: |-
+            uint16_t vals[5] = {1, 3, 4, 6, 7};
+            int idx = (int) i;
+            if (idx < 0 || idx > 4) return;
+            auto cmd = esphome::modbus_controller::ModbusCommandItem::create_write_single_command(id(modbus_relay), 51, vals[idx]);
+            id(modbus_relay)->queue_command(cmd);
+            ESP_LOGW("relay", "波特率已写入(掉电保存，下次上电生效)");
+
+  # 寄存器 204: 0=全关 / 1=全开 / 2=恢复断电前状态
+  - platform: template
+    name: "上电状态模式"
+    id: power_on_mode_select
+    options:
+      - "全关"
+      - "全开"
+      - "恢复断电前状态"
+    initial_option: "全关"
+    optimistic: true
+    on_value:
+      then:
+        - lambda: |-
+            auto cmd = esphome::modbus_controller::ModbusCommandItem::create_write_single_command(id(modbus_relay), 204, (uint16_t) i);
+            id(modbus_relay)->queue_command(cmd);
+            ESP_LOGI("relay", "上电状态模式: %d", (int) i);
+
+number:
+  - platform: template
+    name: "吸合延时(μs)"
+    id: pickup_delay_number
+    optimistic: true
+    min_value: 0
+    max_value: 21666
+    step: 1
+    initial_value: 0
+    unit_of_measurement: "μs"
+  - platform: template
+    name: "延时动作-继电器"
+    id: delay_relay_number
+    optimistic: true
+    min_value: 1
+    max_value: 16
+    step: 1
+    initial_value: 1
+  - platform: template
+    name: "延时动作-时长(0.1s)"
+    id: delay_duration_number
+    optimistic: true
+    min_value: 1
+    max_value: 60000
+    step: 1
+    initial_value: 10
+
+button:
+  # 寄存器 202: 设置继电器吸合延时（μs，≤21666，掉电保存）
+  - platform: template
+    name: "写入吸合延时"
+    id: pickup_delay_apply
+    icon: "mdi:content-save"
+    on_press:
+      - lambda: |-
+          int us = (int) id(pickup_delay_number).state;
+          if (us < 0 || us > 21666) {
+            ESP_LOGW("relay", "吸合延时需在 0~21666 μs 之间");
+            return;
+          }
+          auto cmd = esphome::modbus_controller::ModbusCommandItem::create_write_single_command(id(modbus_relay), 202, (uint16_t) us);
+          id(modbus_relay)->queue_command(cmd);
+          ESP_LOGI("relay", "写入吸合延时: %d μs", us);
+
+  # 寄存器 400~415: 继电器延时动作（先吸合，延时=值×0.1s 后自动释放）
+  - platform: template
+    name: "执行延时动作"
+    id: delay_execute
+    icon: "mdi:timer-play"
+    on_press:
+      - lambda: |-
+          int relay = (int) id(delay_relay_number).state;
+          int dur = (int) id(delay_duration_number).state;
+          if (relay < 1 || relay > 16) {
+            ESP_LOGW("relay", "继电器编号需在 1~16 之间");
+            return;
+          }
+          if (dur < 1 || dur > 60000) {
+            ESP_LOGW("relay", "延时需在 1~60000 之间(0.1s)");
+            return;
+          }
+          uint16_t addr = 400 + (uint16_t) (relay - 1);
+          auto cmd = esphome::modbus_controller::ModbusCommandItem::create_write_single_command(id(modbus_relay), addr, (uint16_t) dur);
+          id(modbus_relay)->queue_command(cmd);
+          ESP_LOGI("relay", "继电器 %d 延时动作 %.1f s", relay, dur * 0.1f);
+
+  # 寄存器 999: 写 999 触发一次吸合/释放时间自学习
+  - platform: template
+    name: "继电器延时自检"
+    id: self_test
+    icon: "mdi:wrench-clock"
+    on_press:
+      - lambda: |-
+          auto cmd = esphome::modbus_controller::ModbusCommandItem::create_write_single_command(id(modbus_relay), 999, 999);
+          id(modbus_relay)->queue_command(cmd);
+          ESP_LOGI("relay", "触发继电器延时自检");
+
+sensor:
+  - platform: uptime
+    name: "运行时间"
+    id: system_uptime
+    type: seconds
+    update_interval: 3s
+
+  # ── 只读状态（保持寄存器 200~205） ──
+  - platform: modbus_controller
+    modbus_controller_id: modbus_relay
+    name: "固件版本"
+    id: firmware_version
+    register_type: holding
+    address: 200
+    value_type: U_WORD
+  - platform: modbus_controller
+    modbus_controller_id: modbus_relay
+    name: "交流电源周期"
+    id: ac_period
+    register_type: holding
+    address: 201
+    value_type: U_WORD
+    unit_of_measurement: "μs"
+  - platform: modbus_controller
+    modbus_controller_id: modbus_relay
+    name: "继电器吸合延时"
+    id: pickup_delay_sensor
+    register_type: holding
+    address: 202
+    value_type: U_WORD
+    unit_of_measurement: "μs"
+  - platform: modbus_controller
+    modbus_controller_id: modbus_relay
+    name: "直流电源电流"
+    id: dc_current
+    register_type: holding
+    address: 203
+    value_type: U_WORD
+    unit_of_measurement: "mA"
+  - platform: modbus_controller
+    modbus_controller_id: modbus_relay
+    name: "上电状态模式"
+    id: power_on_mode_sensor
+    register_type: holding
+    address: 204
+    value_type: U_WORD
+  - platform: modbus_controller
+    modbus_controller_id: modbus_relay
+    name: "配置存储区索引"
+    id: config_index
+    register_type: holding
+    address: 205
+    value_type: U_WORD
