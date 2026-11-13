@@ -650,7 +650,7 @@ rtttl:
 
 light:
   - platform: esp32_rmt_led_strip
-    rgb_order: GRB
+    rgb_order: RGB
     pin:
       number: "38"
       mode:
