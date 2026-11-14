@@ -10,6 +10,13 @@
 esphome:
   name: my-iot-relay-demo
   friendly_name: my-iot-relay-demo
+  on_boot:
+    priority: 200
+    then:
+      - lambda: |-
+          id(test_status_text).publish_state("已停止");
+          id(test_cycle_sensor).publish_state(0.0f);
+          id(test_elapsed_sensor).publish_state(0.0f);
 
 esp32:
   variant: esp32s3
@@ -127,13 +134,84 @@ interval:
             }
           }
 
+  # 性能测试状态机（100ms 轮询）
+  - interval: 100ms
+    then:
+      - lambda: |-
+          if (!id(test_running)) return;
+          uint32_t now = millis();
+
+          // 持续时间到 → 停止
+          if ((int) id(test_duration_s).state > 0 &&
+              (now - id(test_start_ms)) >= (uint32_t) ((int) id(test_duration_s).state) * 1000UL) {
+            id(relay_test_stop)->execute();
+            return;
+          }
+          // 测试次数到 → 停止
+          if ((int) id(test_count_target).state > 0 &&
+              id(test_cycle_count) >= (int) id(test_count_target).state) {
+            id(relay_test_stop)->execute();
+            return;
+          }
+
+          // 等 Modbus 队列排空 + 相位时间到，再翻转
+          if (id(modbus_relay)->get_command_queue_length() > 0) return;
+          if ((now - id(test_phase_start_ms)) < (uint32_t) ((int) id(test_interval_ms).state)) return;
+
+          id(test_phase) = id(test_phase) ? 0 : 1;
+          id(test_phase_start_ms) = now;
+          for (int i = 0; i < 16; i++) {
+            if (id(test_relay_mask) & (1u << i)) {
+              auto cmd = esphome::modbus_controller::ModbusCommandItem::create_write_single_command(
+                  id(modbus_relay), (uint16_t) i, id(test_phase) ? 1 : 0);
+              id(modbus_relay)->queue_command(cmd);
+            }
+          }
+          if (id(test_phase)) {
+            id(test_cycle_count)++;
+          }
+
+          id(test_status_text).publish_state("运行中");
+          id(test_cycle_sensor).publish_state((float) id(test_cycle_count));
+          id(test_elapsed_sensor).publish_state((float) ((now - id(test_start_ms)) / 1000UL));
+
 globals:
   - id: net_led_state
     type: int
     restore_value: no
     initial_value: '-1'
 
+  # ── 继电器性能测试状态 ──
+  - id: test_running
+    type: bool
+    restore_value: no
+    initial_value: 'false'
+  - id: test_relay_mask
+    type: uint32_t
+    restore_value: no
+    initial_value: '0'
+  - id: test_cycle_count
+    type: int
+    restore_value: no
+    initial_value: '0'
+  - id: test_phase
+    type: int
+    restore_value: no
+    initial_value: '0'
+  - id: test_start_ms
+    type: uint32_t
+    restore_value: no
+    initial_value: '0'
+  - id: test_phase_start_ms
+    type: uint32_t
+    restore_value: no
+    initial_value: '0'
+
 text_sensor:
+  - platform: template
+    name: "1-测试状态"
+    id: test_status_text
+    update_interval: 60s
   - platform: wifi_info
     ip_address:
       name: "WiFi IP Address"
@@ -402,6 +480,32 @@ number:
     step: 1
     initial_value: 10
 
+  # ── 性能测试参数 ──
+  - platform: template
+    name: "4-测试次数(0=不限)"
+    id: test_count_target
+    optimistic: true
+    min_value: 0
+    max_value: 100000
+    step: 1
+    initial_value: 100
+  - platform: template
+    name: "5-测试持续时间(秒,0=不限)"
+    id: test_duration_s
+    optimistic: true
+    min_value: 0
+    max_value: 86400
+    step: 1
+    initial_value: 0
+  - platform: template
+    name: "6-开关间隔(ms)"
+    id: test_interval_ms
+    optimistic: true
+    min_value: 100
+    max_value: 60000
+    step: 100
+    initial_value: 500
+
 button:
   # 寄存器 202: 设置继电器吸合延时（μs，≤21666，掉电保存）
   - platform: template
@@ -451,6 +555,99 @@ button:
           auto cmd = esphome::modbus_controller::ModbusCommandItem::create_write_single_command(id(modbus_relay), 999, 999);
           id(modbus_relay)->queue_command(cmd);
           ESP_LOGI("relay", "触发继电器延时自检");
+
+  # ── 性能测试控制 ──
+  - platform: template
+    name: "4-开始性能测试"
+    id: test_start
+    icon: "mdi:play-circle"
+    on_press:
+      - lambda: |-
+          if (id(test_running)) {
+            ESP_LOGW("relay_test", "测试已在进行中");
+            return;
+          }
+          uint32_t mask = 0;
+          const std::string &s = id(test_relay_selection).state;
+          size_t i = 0;
+          while (i < s.size()) {
+            while (i < s.size() && (s[i] == ' ' || s[i] == ',')) i++;
+            if (i >= s.size()) break;
+            int num = 0;
+            bool has_digit = false;
+            while (i < s.size() && s[i] >= '0' && s[i] <= '9') {
+              num = num * 10 + (s[i] - '0');
+              has_digit = true;
+              i++;
+            }
+            if (has_digit && num >= 1 && num <= 16) {
+              mask |= (1u << (num - 1));
+            }
+            while (i < s.size() && s[i] != ',') i++;
+          }
+          if (mask == 0) {
+            ESP_LOGW("relay_test", "请选择至少一个继电器");
+            return;
+          }
+          if ((int) id(test_count_target).state <= 0 && (int) id(test_duration_s).state <= 0) {
+            ESP_LOGW("relay_test", "测试次数和持续时间至少设置一个");
+            return;
+          }
+          id(test_relay_mask) = mask;
+          id(test_running) = true;
+          id(test_cycle_count) = 0;
+          id(test_phase) = 0;
+          id(test_start_ms) = millis();
+          id(test_phase_start_ms) = millis();
+          // 先全部关闭，再进入循环
+          for (int j = 0; j < 16; j++) {
+            if (mask & (1u << j)) {
+              auto cmd = esphome::modbus_controller::ModbusCommandItem::create_write_single_command(
+                  id(modbus_relay), (uint16_t) j, 0);
+              id(modbus_relay)->queue_command(cmd);
+            }
+          }
+          id(test_status_text).publish_state("运行中");
+          id(test_cycle_sensor).publish_state(0.0f);
+          id(test_elapsed_sensor).publish_state(0.0f);
+          ESP_LOGI("relay_test", "测试开始: mask=0x%04X, 次数=%d, 时长=%d s, 间隔=%d ms",
+                   mask, (int) id(test_count_target).state, (int) id(test_duration_s).state,
+                   (int) id(test_interval_ms).state);
+
+  - platform: template
+    name: "5-停止性能测试"
+    id: test_stop_btn
+    icon: "mdi:stop-circle"
+    on_press:
+      - script.execute: relay_test_stop
+
+text:
+  - platform: template
+    name: "1-测试继电器(逗号分隔)"
+    id: test_relay_selection
+    optimistic: true
+    min_length: 0
+    max_length: 60
+    mode: text
+    initial_value: "1"
+
+script:
+  - id: relay_test_stop
+    then:
+      - lambda: |-
+          if (!id(test_running)) return;
+          id(test_running) = false;
+          for (int i = 0; i < 16; i++) {
+            if (id(test_relay_mask) & (1u << i)) {
+              auto cmd = esphome::modbus_controller::ModbusCommandItem::create_write_single_command(
+                  id(modbus_relay), (uint16_t) i, 0);
+              id(modbus_relay)->queue_command(cmd);
+            }
+          }
+          uint32_t elapsed_s = (millis() - id(test_start_ms)) / 1000UL;
+          id(test_status_text).publish_state("已停止");
+          id(test_elapsed_sensor).publish_state((float) elapsed_s);
+          ESP_LOGI("relay_test", "测试结束: %d 次, 耗时 %u s", id(test_cycle_count), elapsed_s);
 
 sensor:
   - platform: uptime
@@ -505,3 +702,14 @@ sensor:
     register_type: holding
     address: 205
     value_type: U_WORD
+
+  # ── 性能测试状态 ──
+  - platform: template
+    name: "7-已完成测试次数"
+    id: test_cycle_sensor
+    update_interval: 60s
+  - platform: template
+    name: "8-测试已运行(秒)"
+    id: test_elapsed_sensor
+    unit_of_measurement: "s"
+    update_interval: 60s
