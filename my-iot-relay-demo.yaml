@@ -692,6 +692,7 @@ sensor:
     register_type: holding
     address: 200
     value_type: U_WORD
+    force_new_range: true
   - platform: modbus_controller
     modbus_controller_id: modbus_relay
     name: "2-交流电源周期"
@@ -700,6 +701,7 @@ sensor:
     address: 201
     value_type: U_WORD
     unit_of_measurement: "μs"
+    force_new_range: true
   - platform: modbus_controller
     modbus_controller_id: modbus_relay
     name: "3-继电器吸合延时"
@@ -708,6 +710,7 @@ sensor:
     address: 202
     value_type: U_WORD
     unit_of_measurement: "μs"
+    force_new_range: true
   - platform: modbus_controller
     modbus_controller_id: modbus_relay
     name: "4-直流电源电流"
@@ -716,6 +719,7 @@ sensor:
     address: 203
     value_type: U_WORD
     unit_of_measurement: "mA"
+    force_new_range: true
   - platform: modbus_controller
     modbus_controller_id: modbus_relay
     name: "5-上电状态模式"
@@ -723,6 +727,7 @@ sensor:
     register_type: holding
     address: 204
     value_type: U_WORD
+    force_new_range: true
   - platform: modbus_controller
     modbus_controller_id: modbus_relay
     name: "6-配置存储区索引"
@@ -730,6 +735,7 @@ sensor:
     register_type: holding
     address: 205
     value_type: U_WORD
+    force_new_range: true
 
   # ── 性能测试状态 ──
   - platform: template
