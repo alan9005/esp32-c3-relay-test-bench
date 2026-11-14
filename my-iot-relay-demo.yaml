@@ -3,7 +3,7 @@
 #
 # 16 路继电器控制板（Modbus RTU 主站）
 #   - RS485 总线: TXD=GPIO1, RXD=GPIO2, 9600 8N1, 从站地址 100
-#   - WiFi 连接后每 5 秒从调试串口(USB)输出本机 IP / MAC
+#   - WiFi 连接后每 5 秒从调试串口 UART0 (GPIO43/GPIO44) 输出本机 IP / MAC
 #   - GPIO48 WS2812 网络状态灯:
 #       绿色常亮 = WiFi 已连接 / 黄色呼吸 = 连接中 / 蓝色快闪 = AP 配网模式
 
@@ -35,16 +35,11 @@ wifi:
     password: "So6sCTVk4OAs"
   on_connect:
     - lambda: |-
-        ESP_LOGI("network", "WiFi connected");
         {
-          char ip_buf[esphome::network::IP_ADDRESS_BUFFER_SIZE];
-          for (auto &ip : esphome::wifi::global_wifi_component->get_ip_addresses()) {
-            if (ip.is_ip4()) {
-              ip.str_to(ip_buf);
-              ESP_LOGI("network", "IP Address: %s", ip_buf);
-              break;
-            }
-          }
+          char buffer[64];
+          memset(buffer, 0x00, sizeof(buffer));
+          snprintf(buffer, sizeof(buffer), "WiFi connected\r\n");
+          uart_write_bytes((uart_port_t)0, buffer, strlen(buffer));
         }
         id(net_status_led).turn_on().set_rgb(0.0f, 1.0f, 0.0f).set_effect("None").set_brightness(0.4f).perform();
   on_disconnect:
@@ -61,6 +56,13 @@ web_server:
   css_include: "web/relay_dashboard.css"
 
 uart:
+  # UART0: 调试串口 (TX=GPIO43, RX=GPIO44, 115200)
+  - id: uart_debug
+    tx_pin: GPIO43
+    rx_pin: GPIO44
+    baud_rate: 115200
+    rx_buffer_size: 256
+  # UART1: RS485 Modbus 总线 (TX=GPIO1, RX=GPIO2, 9600 8N1)
   - id: uart_1
     tx_pin: GPIO1
     rx_pin: GPIO2
@@ -84,13 +86,23 @@ modbus_controller:
     offline_skip_updates: 5
 
 interval:
-  # WiFi 连接后，每 5 秒从调试串口输出本机 IP / MAC
+  # WiFi 连接后，每 5 秒从调试串口 UART0 输出本机 IP / MAC
   - interval: 5s
     then:
       - lambda: |-
           if (esphome::wifi::global_wifi_component->is_connected()) {
-            ESP_LOGI("network", "IP Address: %s", id(wifi_ip).state.c_str());
-            ESP_LOGI("network", "MAC Address: %s", id(wifi_mac).state.c_str());
+            {
+              char buffer[64];
+              memset(buffer, 0x00, sizeof(buffer));
+              snprintf(buffer, sizeof(buffer), "IP Address: %s\r\n", id(wifi_ip).state.c_str());
+              uart_write_bytes((uart_port_t)0, buffer, strlen(buffer));
+            }
+            {
+              char buffer[64];
+              memset(buffer, 0x00, sizeof(buffer));
+              snprintf(buffer, sizeof(buffer), "MAC Address: %s\r\n", id(wifi_mac).state.c_str());
+              uart_write_bytes((uart_port_t)0, buffer, strlen(buffer));
+            }
           }
   # 网络状态灯状态机（1s 轮询，状态变化才刷新）
   - interval: 1s
