@@ -237,15 +237,15 @@ globals:
 
 text_sensor:
   - platform: template
-    name: "1-测试状态"
+    name: "test_status_text"
     id: test_status_text
     update_interval: 60s
   - platform: wifi_info
     ip_address:
-      name: "WiFi IP Address"
+      name: "wifi_ip"
       id: wifi_ip
     mac_address:
-      name: "WiFi MAC Address"
+      name: "wifi_mac"
       id: wifi_mac
 
 light:
@@ -281,7 +281,7 @@ switch:
   # restore_mode: DISABLED 避免开机时向板卡写入默认状态（上电状态由板卡寄存器 204 决定）
   - platform: modbus_controller
     modbus_controller_id: modbus_relay
-    name: "继电器 01"
+    name: "relay_01"
     id: relay_01
     register_type: holding
     address: 0
@@ -290,7 +290,7 @@ switch:
     icon: "mdi:toggle-switch"
   - platform: modbus_controller
     modbus_controller_id: modbus_relay
-    name: "继电器 02"
+    name: "relay_02"
     id: relay_02
     register_type: holding
     address: 1
@@ -299,7 +299,7 @@ switch:
     icon: "mdi:toggle-switch"
   - platform: modbus_controller
     modbus_controller_id: modbus_relay
-    name: "继电器 03"
+    name: "relay_03"
     id: relay_03
     register_type: holding
     address: 2
@@ -308,7 +308,7 @@ switch:
     icon: "mdi:toggle-switch"
   - platform: modbus_controller
     modbus_controller_id: modbus_relay
-    name: "继电器 04"
+    name: "relay_04"
     id: relay_04
     register_type: holding
     address: 3
@@ -317,7 +317,7 @@ switch:
     icon: "mdi:toggle-switch"
   - platform: modbus_controller
     modbus_controller_id: modbus_relay
-    name: "继电器 05"
+    name: "relay_05"
     id: relay_05
     register_type: holding
     address: 4
@@ -326,7 +326,7 @@ switch:
     icon: "mdi:toggle-switch"
   - platform: modbus_controller
     modbus_controller_id: modbus_relay
-    name: "继电器 06"
+    name: "relay_06"
     id: relay_06
     register_type: holding
     address: 5
@@ -335,7 +335,7 @@ switch:
     icon: "mdi:toggle-switch"
   - platform: modbus_controller
     modbus_controller_id: modbus_relay
-    name: "继电器 07"
+    name: "relay_07"
     id: relay_07
     register_type: holding
     address: 6
@@ -344,7 +344,7 @@ switch:
     icon: "mdi:toggle-switch"
   - platform: modbus_controller
     modbus_controller_id: modbus_relay
-    name: "继电器 08"
+    name: "relay_08"
     id: relay_08
     register_type: holding
     address: 7
@@ -353,7 +353,7 @@ switch:
     icon: "mdi:toggle-switch"
   - platform: modbus_controller
     modbus_controller_id: modbus_relay
-    name: "继电器 09"
+    name: "relay_09"
     id: relay_09
     register_type: holding
     address: 8
@@ -362,7 +362,7 @@ switch:
     icon: "mdi:toggle-switch"
   - platform: modbus_controller
     modbus_controller_id: modbus_relay
-    name: "继电器 10"
+    name: "relay_10"
     id: relay_10
     register_type: holding
     address: 9
@@ -371,7 +371,7 @@ switch:
     icon: "mdi:toggle-switch"
   - platform: modbus_controller
     modbus_controller_id: modbus_relay
-    name: "继电器 11"
+    name: "relay_11"
     id: relay_11
     register_type: holding
     address: 10
@@ -380,7 +380,7 @@ switch:
     icon: "mdi:toggle-switch"
   - platform: modbus_controller
     modbus_controller_id: modbus_relay
-    name: "继电器 12"
+    name: "relay_12"
     id: relay_12
     register_type: holding
     address: 11
@@ -389,7 +389,7 @@ switch:
     icon: "mdi:toggle-switch"
   - platform: modbus_controller
     modbus_controller_id: modbus_relay
-    name: "继电器 13"
+    name: "relay_13"
     id: relay_13
     register_type: holding
     address: 12
@@ -398,7 +398,7 @@ switch:
     icon: "mdi:toggle-switch"
   - platform: modbus_controller
     modbus_controller_id: modbus_relay
-    name: "继电器 14"
+    name: "relay_14"
     id: relay_14
     register_type: holding
     address: 13
@@ -407,7 +407,7 @@ switch:
     icon: "mdi:toggle-switch"
   - platform: modbus_controller
     modbus_controller_id: modbus_relay
-    name: "继电器 15"
+    name: "relay_15"
     id: relay_15
     register_type: holding
     address: 14
@@ -416,7 +416,7 @@ switch:
     icon: "mdi:toggle-switch"
   - platform: modbus_controller
     modbus_controller_id: modbus_relay
-    name: "继电器 16"
+    name: "relay_16"
     id: relay_16
     register_type: holding
     address: 15
@@ -426,7 +426,7 @@ switch:
 
   # ── 全部继电器开关（寄存器 52: 0=全关 / 1=全开） ──
   - platform: template
-    name: "0-全部继电器"
+    name: "all_relays"
     id: all_relays
     icon: "mdi:power"
     optimistic: true
@@ -444,7 +444,7 @@ switch:
 select:
   # 寄存器 51: 1=9600 / 3=19200 / 4=38400 / 6=57600 / 7=115200
   - platform: template
-    name: "1-波特率设置"
+    name: "baud_rate_select"
     id: baud_rate_select
     options:
       - "9600"
@@ -466,7 +466,7 @@ select:
 
   # 寄存器 204: 0=全关 / 1=全开 / 2=恢复断电前状态
   - platform: template
-    name: "2-上电状态模式"
+    name: "power_on_mode_select"
     id: power_on_mode_select
     options:
       - "全关"
@@ -483,7 +483,7 @@ select:
 
 number:
   - platform: template
-    name: "1-吸合延时(μs)"
+    name: "pickup_delay_number"
     id: pickup_delay_number
     optimistic: true
     min_value: 0
@@ -492,7 +492,7 @@ number:
     initial_value: 0
     unit_of_measurement: "μs"
   - platform: template
-    name: "2-延时动作-继电器"
+    name: "delay_relay_number"
     id: delay_relay_number
     optimistic: true
     min_value: 1
@@ -500,7 +500,7 @@ number:
     step: 1
     initial_value: 1
   - platform: template
-    name: "3-延时动作-时长(0.1s)"
+    name: "delay_duration_number"
     id: delay_duration_number
     optimistic: true
     min_value: 1
@@ -510,7 +510,7 @@ number:
 
   # ── 性能测试参数 ──
   - platform: template
-    name: "4-测试次数(0=不限)"
+    name: "test_count_target"
     id: test_count_target
     optimistic: true
     min_value: 0
@@ -518,7 +518,7 @@ number:
     step: 1
     initial_value: 100
   - platform: template
-    name: "5-测试持续时间(秒,0=不限)"
+    name: "test_duration_s"
     id: test_duration_s
     optimistic: true
     min_value: 0
@@ -526,7 +526,7 @@ number:
     step: 1
     initial_value: 0
   - platform: template
-    name: "6-开关间隔(ms)"
+    name: "test_interval_ms"
     id: test_interval_ms
     optimistic: true
     min_value: 100
@@ -537,7 +537,7 @@ number:
 button:
   # 寄存器 202: 设置继电器吸合延时（μs，≤21666，掉电保存）
   - platform: template
-    name: "1-写入吸合延时"
+    name: "pickup_delay_apply"
     id: pickup_delay_apply
     icon: "mdi:content-save"
     on_press:
@@ -553,7 +553,7 @@ button:
 
   # 寄存器 400~415: 继电器延时动作（先吸合，延时=值×0.1s 后自动释放）
   - platform: template
-    name: "2-执行延时动作"
+    name: "delay_execute"
     id: delay_execute
     icon: "mdi:timer-play"
     on_press:
@@ -575,7 +575,7 @@ button:
 
   # 寄存器 999: 写 999 触发一次吸合/释放时间自学习
   - platform: template
-    name: "3-继电器延时自检"
+    name: "self_test"
     id: self_test
     icon: "mdi:wrench-clock"
     on_press:
@@ -586,7 +586,7 @@ button:
 
   # ── 性能测试控制 ──
   - platform: template
-    name: "4-开始性能测试"
+    name: "test_start"
     id: test_start
     icon: "mdi:play-circle"
     on_press:
@@ -643,7 +643,7 @@ button:
                    (int) id(test_interval_ms).state);
 
   - platform: template
-    name: "5-停止性能测试"
+    name: "test_stop_btn"
     id: test_stop_btn
     icon: "mdi:stop-circle"
     on_press:
@@ -651,7 +651,7 @@ button:
 
 text:
   - platform: template
-    name: "1-测试继电器(逗号分隔)"
+    name: "test_relay_selection"
     id: test_relay_selection
     optimistic: true
     min_length: 0
@@ -679,7 +679,7 @@ script:
 
 sensor:
   - platform: uptime
-    name: "0-运行时间"
+    name: "system_uptime"
     id: system_uptime
     type: seconds
     update_interval: 3s
@@ -687,7 +687,7 @@ sensor:
   # ── 只读状态（保持寄存器 200~205） ──
   - platform: modbus_controller
     modbus_controller_id: modbus_relay
-    name: "1-固件版本"
+    name: "firmware_version"
     id: firmware_version
     register_type: holding
     address: 200
@@ -695,7 +695,7 @@ sensor:
     force_new_range: true
   - platform: modbus_controller
     modbus_controller_id: modbus_relay
-    name: "2-交流电源周期"
+    name: "ac_period"
     id: ac_period
     register_type: holding
     address: 201
@@ -704,7 +704,7 @@ sensor:
     force_new_range: true
   - platform: modbus_controller
     modbus_controller_id: modbus_relay
-    name: "3-继电器吸合延时"
+    name: "pickup_delay_sensor"
     id: pickup_delay_sensor
     register_type: holding
     address: 202
@@ -713,7 +713,7 @@ sensor:
     force_new_range: true
   - platform: modbus_controller
     modbus_controller_id: modbus_relay
-    name: "4-直流电源电流"
+    name: "dc_current"
     id: dc_current
     register_type: holding
     address: 203
@@ -722,7 +722,7 @@ sensor:
     force_new_range: true
   - platform: modbus_controller
     modbus_controller_id: modbus_relay
-    name: "5-上电状态模式"
+    name: "power_on_mode_sensor"
     id: power_on_mode_sensor
     register_type: holding
     address: 204
@@ -730,7 +730,7 @@ sensor:
     force_new_range: true
   - platform: modbus_controller
     modbus_controller_id: modbus_relay
-    name: "6-配置存储区索引"
+    name: "config_index"
     id: config_index
     register_type: holding
     address: 205
@@ -739,11 +739,11 @@ sensor:
 
   # ── 性能测试状态 ──
   - platform: template
-    name: "7-已完成测试次数"
+    name: "test_cycle_sensor"
     id: test_cycle_sensor
     update_interval: 60s
   - platform: template
-    name: "8-测试已运行(秒)"
+    name: "test_elapsed_sensor"
     id: test_elapsed_sensor
     unit_of_measurement: "s"
     update_interval: 60s
