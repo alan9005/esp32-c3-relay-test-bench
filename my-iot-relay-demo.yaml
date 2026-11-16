@@ -59,6 +59,7 @@ captive_portal:
 web_server:
   port: 80
   version: 2
+  log: false  # 关闭 SSE 日志流，避免页面/状态更新变慢
   js_include: "web/relay_dashboard.js"
   css_include: "web/relay_dashboard.css"
 
@@ -117,7 +118,7 @@ modbus_controller:
     modbus_id: modbus_1
     setup_priority: -5
     update_interval: 5s
-    command_throttle: 100ms
+    command_throttle: 50ms
     offline_skip_updates: 1
 
 interval:
@@ -693,6 +694,7 @@ sensor:
     address: 200
     value_type: U_WORD
     force_new_range: true
+    skip_updates: 5
   - platform: modbus_controller
     modbus_controller_id: modbus_relay
     name: "ac_period"
@@ -702,6 +704,7 @@ sensor:
     value_type: U_WORD
     unit_of_measurement: "μs"
     force_new_range: true
+    skip_updates: 5
   - platform: modbus_controller
     modbus_controller_id: modbus_relay
     name: "pickup_delay_sensor"
@@ -711,6 +714,7 @@ sensor:
     value_type: U_WORD
     unit_of_measurement: "μs"
     force_new_range: true
+    skip_updates: 5
   - platform: modbus_controller
     modbus_controller_id: modbus_relay
     name: "dc_current"
@@ -720,6 +724,7 @@ sensor:
     value_type: U_WORD
     unit_of_measurement: "mA"
     force_new_range: true
+    skip_updates: 5
   - platform: modbus_controller
     modbus_controller_id: modbus_relay
     name: "power_on_mode_sensor"
@@ -728,6 +733,7 @@ sensor:
     address: 204
     value_type: U_WORD
     force_new_range: true
+    skip_updates: 5
   - platform: modbus_controller
     modbus_controller_id: modbus_relay
     name: "config_index"
@@ -736,6 +742,7 @@ sensor:
     address: 205
     value_type: U_WORD
     force_new_range: true
+    skip_updates: 5
 
   # ── 性能测试状态 ──
   - platform: template
