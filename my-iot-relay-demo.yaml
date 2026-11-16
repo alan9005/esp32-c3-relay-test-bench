@@ -173,12 +173,14 @@ interval:
           // 持续时间到 → 停止
           if ((int) id(test_duration_s).state > 0 &&
               (now - id(test_start_ms)) >= (uint32_t) ((int) id(test_duration_s).state) * 1000UL) {
+            id(test_stop_reason) = 2;
             id(relay_test_stop)->execute();
             return;
           }
           // 测试次数到 → 停止
           if ((int) id(test_count_target).state > 0 &&
               id(test_cycle_count) >= (int) id(test_count_target).state) {
+            id(test_stop_reason) = 1;
             id(relay_test_stop)->execute();
             return;
           }
@@ -233,6 +235,11 @@ globals:
     initial_value: '0'
   - id: test_phase_start_ms
     type: uint32_t
+    restore_value: no
+    initial_value: '0'
+  # 停止原因: 1=次数完成 2=时间到 3=手动停止
+  - id: test_stop_reason
+    type: int
     restore_value: no
     initial_value: '0'
 
@@ -648,7 +655,9 @@ button:
     id: test_stop_btn
     icon: "mdi:stop-circle"
     on_press:
-      - script.execute: relay_test_stop
+      - lambda: |-
+          id(test_stop_reason) = 3;
+          id(relay_test_stop)->execute();
 
 text:
   - platform: template
@@ -674,9 +683,16 @@ script:
             }
           }
           uint32_t elapsed_s = (millis() - id(test_start_ms)) / 1000UL;
-          id(test_status_text).publish_state("已停止");
+          const char *reason;
+          if (id(test_stop_reason) == 1) reason = "次数完成";
+          else if (id(test_stop_reason) == 2) reason = "时间到";
+          else if (id(test_stop_reason) == 3) reason = "手动停止";
+          else reason = "已停止";
+          char status_buf[64];
+          snprintf(status_buf, sizeof(status_buf), "已停止(%s)", reason);
+          id(test_status_text).publish_state(status_buf);
           id(test_elapsed_sensor).publish_state((float) elapsed_s);
-          ESP_LOGI("relay_test", "测试结束: %d 次, 耗时 %u s", id(test_cycle_count), elapsed_s);
+          ESP_LOGI("relay_test", "测试结束: %d 次, 耗时 %u s (%s)", id(test_cycle_count), elapsed_s, reason);
 
 sensor:
   - platform: uptime
