@@ -28,6 +28,8 @@ logger:
 api:
   encryption:
     key: "VNJCxLT2rfTBnHjufCBBiBs7H3nd09bGJb8Lmgjsa4U="
+  # 未接 Home Assistant 时，默认 15 分钟无客户端会自动重启；设为 0 禁用
+  reboot_timeout: 0s
 
 ota:
   - platform: esphome
