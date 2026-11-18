@@ -534,7 +534,7 @@ number:
     min_value: 0
     max_value: 86400
     step: 1
-    initial_value: 0
+    initial_value: 120
   - platform: template
     name: "test_interval_ms"
     id: test_interval_ms
@@ -542,7 +542,7 @@ number:
     min_value: 100
     max_value: 60000
     step: 100
-    initial_value: 500
+    initial_value: 1500
 
 button:
   # 寄存器 202: 设置继电器吸合延时（μs，≤21666，掉电保存）
@@ -600,6 +600,30 @@ button:
     id: test_start
     icon: "mdi:play-circle"
     on_press:
+      - script.execute: relay_test_start
+
+  - platform: template
+    name: "test_stop_btn"
+    id: test_stop_btn
+    icon: "mdi:stop-circle"
+    on_press:
+      - lambda: |-
+          id(test_stop_reason) = 3;
+          id(relay_test_stop)->execute();
+
+text:
+  - platform: template
+    name: "test_relay_selection"
+    id: test_relay_selection
+    optimistic: true
+    min_length: 0
+    max_length: 60
+    mode: text
+    initial_value: "1"
+
+script:
+  - id: relay_test_start
+    then:
       - lambda: |-
           if (id(test_running)) {
             ESP_LOGW("relay_test", "测试已在进行中");
@@ -652,26 +676,6 @@ button:
                    mask, (int) id(test_count_target).state, (int) id(test_duration_s).state,
                    (int) id(test_interval_ms).state);
 
-  - platform: template
-    name: "test_stop_btn"
-    id: test_stop_btn
-    icon: "mdi:stop-circle"
-    on_press:
-      - lambda: |-
-          id(test_stop_reason) = 3;
-          id(relay_test_stop)->execute();
-
-text:
-  - platform: template
-    name: "test_relay_selection"
-    id: test_relay_selection
-    optimistic: true
-    min_length: 0
-    max_length: 60
-    mode: text
-    initial_value: "1"
-
-script:
   - id: relay_test_stop
     then:
       - lambda: |-
@@ -695,6 +699,33 @@ script:
           id(test_status_text).publish_state(status_buf);
           id(test_elapsed_sensor).publish_state((float) elapsed_s);
           ESP_LOGI("relay_test", "测试结束: %d 次, 耗时 %u s (%s)", id(test_cycle_count), elapsed_s, reason);
+
+binary_sensor:
+  # 物理按键：IO0 短按 启动/停止 性能测试（BOOT 按键，按下为低电平）
+  - platform: gpio
+    name: "test_key"
+    id: test_key
+    pin:
+      number: GPIO0
+      inverted: true
+      mode:
+        input: true
+        pullup: true
+    internal: true
+    filters:
+      - delayed_on: 20ms
+      - delayed_off: 20ms
+    on_press:
+      then:
+        - lambda: |-
+            if (id(test_running)) {
+              id(test_stop_reason) = 3;
+              id(relay_test_stop)->execute();
+              ESP_LOGI("relay_test", "按键: 停止测试");
+            } else {
+              id(relay_test_start)->execute();
+              ESP_LOGI("relay_test", "按键: 开始测试");
+            }
 
 sensor:
   - platform: uptime
