@@ -3,9 +3,9 @@
 # 注意: 本文件由 my-iot-relay-demo.yaml (ESP32-S3) 适配而来，请按实际 ESP32-C3 模组/底板引脚修改下方 UART/LED/按键 GPIO。
 #
 # 16 路继电器控制板（Modbus RTU 主站）
-#   - RS485 总线: TXD=GPIO1, RXD=GPIO2, 9600 8N1, 从站地址 100
-#   - WiFi 连接后每 5 秒从调试串口 UART0 (GPIO43/GPIO44) 输出本机 IP / MAC
-#   - GPIO48 WS2812 网络状态灯:
+#   - RS485 总线: 示例 TXD=GPIO1, RXD=GPIO2, 9600 8N1, 从站地址 100（请按实际 RS485 收发引脚修改）
+#   - WiFi 连接后每 5 秒从调试串口输出本机 IP / MAC（示例 GPIO21/GPIO20，请按实际修改）
+#   - WS2812 网络状态灯: 示例 GPIO8（请按实际修改）
 #       绿色常亮 = WiFi 已连接 / 黄色呼吸 = 连接中 / 蓝色快闪 = AP 配网模式
 
 esphome:
