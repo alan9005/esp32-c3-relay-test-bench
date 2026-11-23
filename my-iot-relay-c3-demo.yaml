@@ -5,8 +5,8 @@
 # 16 路继电器控制板（Modbus RTU 主站）
 #   - RS485 总线: 示例 TXD=GPIO1, RXD=GPIO2, 9600 8N1, 从站地址 100（请按实际 RS485 收发引脚修改）
 #   - WiFi 连接后每 5 秒从调试串口输出本机 IP / MAC（示例 GPIO21/GPIO20，请按实际修改）
-#   - WS2812 网络状态灯: 示例 GPIO8（请按实际修改）
-#       绿色常亮 = WiFi 已连接 / 黄色呼吸 = 连接中 / 蓝色快闪 = AP 配网模式
+#   - 普通 LED 网络状态灯: GPIO8（按闪烁频率指示）
+#       常亮 = WiFi 已连接 / 慢闪(1Hz) = 连接中 / 快闪(约4Hz) = AP 配网模式
 
 esphome:
   name: my-iot-relay-c3-demo
