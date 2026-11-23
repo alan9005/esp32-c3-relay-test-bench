@@ -3,8 +3,8 @@
 # 注意: 本文件由 my-iot-relay-demo.yaml (ESP32-S3) 适配而来，请按实际 ESP32-C3 模组/底板引脚修改下方 UART/LED/按键 GPIO。
 #
 # 16 路继电器控制板（Modbus RTU 主站）
-#   - RS485 总线: 示例 TXD=GPIO1, RXD=GPIO2, 9600 8N1, 从站地址 100（请按实际 RS485 收发引脚修改）
-#   - WiFi 连接后每 5 秒从调试串口输出本机 IP / MAC（示例 GPIO21/GPIO20，请按实际修改）
+#   - RS485 总线: TXD=GPIO21, RXD=GPIO20, 9600 8N1, 从站地址 100（请按实际 RS485 收发引脚/方向控制修改）
+#   - WiFi 连接后每 5 秒从调试串口输出本机 IP / MAC（当前自定义输出写入硬件 UART0，见下方说明）
 #   - 普通 LED 网络状态灯: GPIO8（按闪烁频率指示）
 #       常亮 = WiFi 已连接 / 慢闪(1Hz) = 连接中 / 快闪(约4Hz) = AP 配网模式
 
@@ -67,23 +67,17 @@ web_server:
   css_include: "web/relay_dashboard.css"
 
 uart:
-  # UART 调试串口：ESP32-S3 原为 GPIO43/GPIO44，ESP32-C3 无此引脚，请按实际硬件修改
-  # 常见方案：使用空闲 GPIO 作 UART，或仅依赖 logger(USB Serial/JTAG)。下方为示例引脚。
-  - id: uart_debug
+  # RS485 Modbus 总线（按用户要求使用 IO20/IO21）：TX=GPIO21, RX=GPIO20, 9600 8N1
+  # 如 RS485 收发器需要 DE/RE 控制，请补充 flow_control_pin 等配置并按硬件接线调整。
+  - id: uart_1
     tx_pin: GPIO21
     rx_pin: GPIO20
-    baud_rate: 115200
-    rx_buffer_size: 256
-  # RS485 Modbus 总线：请按实际硬件修改引脚（注意 ESP32-C3 上 GPIO2 为 strapping pin，若外部电路影响启动请换脚）
-  - id: uart_1
-    tx_pin: GPIO1
-    rx_pin: GPIO2
     baud_rate: 9600
     data_bits: 8
     stop_bits: 1
     parity: NONE
     rx_buffer_size: 256
-    # Modbus 收发原始帧打印到调试串口 UART0
+    # Modbus 收发原始帧打印到硬件 UART0（自定义调试输出）
     debug:
       direction: BOTH
       after:
