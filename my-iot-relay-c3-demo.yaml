@@ -1,5 +1,6 @@
-# Board: Generic ESP32-S3 Board (Generic)
-# Definition: definitions/boards/generic-esp32s3/manifest.yaml
+# Board: Generic ESP32-C3 Board (Generic)
+# Definition: definitions/boards/generic-esp32c3/manifest.yaml
+# 注意: 本文件由 my-iot-relay-demo.yaml (ESP32-S3) 适配而来，请按实际 ESP32-C3 模组/底板引脚修改下方 UART/LED/按键 GPIO。
 #
 # 16 路继电器控制板（Modbus RTU 主站）
 #   - RS485 总线: TXD=GPIO1, RXD=GPIO2, 9600 8N1, 从站地址 100
@@ -8,8 +9,8 @@
 #       绿色常亮 = WiFi 已连接 / 黄色呼吸 = 连接中 / 蓝色快闪 = AP 配网模式
 
 esphome:
-  name: my-iot-relay-demo
-  friendly_name: my-iot-relay-demo
+  name: my-iot-relay-c3-demo
+  friendly_name: my-iot-relay-c3-demo
   on_boot:
     priority: 200
     then:
@@ -19,7 +20,7 @@ esphome:
           id(test_elapsed_sensor).publish_state(0.0f);
 
 esp32:
-  variant: esp32s3
+  variant: esp32c3
   framework:
     type: esp-idf
 
@@ -40,7 +41,7 @@ wifi:
   ssid: !secret wifi_ssid
   password: !secret wifi_password
   ap:
-    ssid: relay-demo Fallback Hotspot
+    ssid: relay-c3-demo Fallback Hotspot
     password: "So6sCTVk4OAs"
   on_connect:
     - lambda: |-
@@ -66,13 +67,14 @@ web_server:
   css_include: "web/relay_dashboard.css"
 
 uart:
-  # UART0: 调试串口 (TX=GPIO43, RX=GPIO44, 115200)
+  # UART 调试串口：ESP32-S3 原为 GPIO43/GPIO44，ESP32-C3 无此引脚，请按实际硬件修改
+  # 常见方案：使用空闲 GPIO 作 UART，或仅依赖 logger(USB Serial/JTAG)。下方为示例引脚。
   - id: uart_debug
-    tx_pin: GPIO43
-    rx_pin: GPIO44
+    tx_pin: GPIO21
+    rx_pin: GPIO20
     baud_rate: 115200
     rx_buffer_size: 256
-  # UART1: RS485 Modbus 总线 (TX=GPIO1, RX=GPIO2, 9600 8N1)
+  # RS485 Modbus 总线：请按实际硬件修改引脚（注意 ESP32-C3 上 GPIO2 为 strapping pin，若外部电路影响启动请换脚）
   - id: uart_1
     tx_pin: GPIO1
     rx_pin: GPIO2
@@ -261,7 +263,8 @@ text_sensor:
 light:
   - platform: esp32_rmt_led_strip
     rgb_order: GRB
-    pin: GPIO48
+    # ESP32-S3 原为 GPIO48，ESP32-C3 无此引脚，请按实际 WS2812 数据脚修改
+    pin: GPIO8
     id: net_status_led
     num_leds: 1
     chipset: ws2812
@@ -701,12 +704,12 @@ script:
           ESP_LOGI("relay_test", "测试结束: %d 次, 耗时 %u s (%s)", id(test_cycle_count), elapsed_s, reason);
 
 binary_sensor:
-  # 物理按键：IO0 短按 启动/停止 性能测试（BOOT 按键，按下为低电平）
+  # 物理按键：短按 启动/停止 性能测试（请按实际按键 GPIO 修改；GPIO9 常见于部分 C3 模组 BOOT 键，GPIO0 亦为 strapping pin）
   - platform: gpio
     name: "test_key"
     id: test_key
     pin:
-      number: GPIO0
+      number: GPIO9
       inverted: true
       mode:
         input: true
