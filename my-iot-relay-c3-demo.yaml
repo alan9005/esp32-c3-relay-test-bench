@@ -51,11 +51,11 @@ wifi:
           snprintf(buffer, sizeof(buffer), "WiFi connected\r\n");
           uart_write_bytes((uart_port_t)0, buffer, strlen(buffer));
         }
-        id(net_status_led).turn_on().set_rgb(0.0f, 1.0f, 0.0f).set_effect("None").set_brightness(0.4f).perform();
+        id(net_status_led).turn_on().set_effect("None").perform();
   on_disconnect:
     - lambda: |-
         ESP_LOGW("network", "WiFi disconnected");
-        id(net_status_led).turn_on().set_rgb(1.0f, 0.8f, 0.0f).set_effect("connecting_pulse").perform();
+        id(net_status_led).turn_on().set_effect("connecting_blink").perform();
 
 captive_portal:
 
@@ -150,20 +150,20 @@ interval:
       - lambda: |-
           int s;
           if (esphome::wifi::global_wifi_component->is_connected()) {
-            s = 2;  // 绿色常亮
+            s = 2;  // 已连接: 常亮
           } else if (esphome::wifi::global_wifi_component->is_ap_active()) {
-            s = 3;  // 蓝色快闪
+            s = 3;  // AP 配网: 快闪
           } else {
-            s = 1;  // 黄色呼吸
+            s = 1;  // 未连接/连接中: 慢闪
           }
           if (s != id(net_led_state)) {
             id(net_led_state) = s;
             if (s == 2) {
-              id(net_status_led).turn_on().set_rgb(0.0f, 1.0f, 0.0f).set_effect("None").set_brightness(0.4f).perform();
+              id(net_status_led).turn_on().set_effect("None").perform();
             } else if (s == 3) {
               id(net_status_led).turn_on().set_effect("ap_blink").perform();
             } else {
-              id(net_status_led).turn_on().set_rgb(1.0f, 0.8f, 0.0f).set_effect("connecting_pulse").perform();
+              id(net_status_led).turn_on().set_effect("connecting_blink").perform();
             }
           }
 
@@ -260,31 +260,29 @@ text_sensor:
       name: "wifi_mac"
       id: wifi_mac
 
-light:
-  - platform: esp32_rmt_led_strip
-    rgb_order: GRB
-    # ESP32-S3 原为 GPIO48，ESP32-C3 无此引脚，请按实际 WS2812 数据脚修改
+output:
+  - platform: gpio
     pin: GPIO8
-    id: net_status_led
-    num_leds: 1
-    chipset: ws2812
+    id: net_status_led_gpio
+
+light:
+  - platform: binary
     name: "网络状态灯"
+    id: net_status_led
+    output: net_status_led_gpio
     internal: true
     effects:
-      - pulse:
-          name: "connecting_pulse"
-          transition_length: 0.6s
-          update_interval: 0.6s
-          min_brightness: 8%
-          max_brightness: 100%
+      - strobe:
+          name: "connecting_blink"
+          colors:
+            - state: true
+              duration: 500ms
+            - state: false
+              duration: 500ms
       - strobe:
           name: "ap_blink"
           colors:
             - state: true
-              brightness: 100%
-              red: 0%
-              green: 0%
-              blue: 100%
               duration: 120ms
             - state: false
               duration: 120ms
