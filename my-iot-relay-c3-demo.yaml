@@ -422,6 +422,7 @@ switch:
 
 select:
   # 寄存器 51: 1=9600 / 3=19200 / 4=38400 / 6=57600 / 7=115200
+  # 仅选择不直接写入，由 baud_apply 按钮读取后写入
   - platform: template
     name: "baud_rate_select"
     id: baud_rate_select
@@ -433,17 +434,9 @@ select:
       - "115200"
     initial_option: "9600"
     optimistic: true
-    on_value:
-      then:
-        - lambda: |-
-            uint16_t vals[5] = {1, 3, 4, 6, 7};
-            int idx = (int) i;
-            if (idx < 0 || idx > 4) return;
-            auto cmd = esphome::modbus_controller::ModbusCommandItem::create_write_single_command(id(modbus_relay), 51, vals[idx]);
-            id(modbus_relay)->queue_command(cmd);
-            ESP_LOGW("relay", "波特率已写入(掉电保存，下次上电生效)");
 
   # 寄存器 204: 0=全关 / 1=全开 / 2=恢复断电前状态
+  # 仅选择不直接写入，由 power_apply 按钮读取后写入
   - platform: template
     name: "power_on_mode_select"
     id: power_on_mode_select
@@ -453,12 +446,6 @@ select:
       - "恢复断电前状态"
     initial_option: "全关"
     optimistic: true
-    on_value:
-      then:
-        - lambda: |-
-            auto cmd = esphome::modbus_controller::ModbusCommandItem::create_write_single_command(id(modbus_relay), 204, (uint16_t) i);
-            id(modbus_relay)->queue_command(cmd);
-            ESP_LOGI("relay", "上电状态模式: %d", (int) i);
 
 number:
   - platform: template
@@ -514,6 +501,38 @@ number:
     initial_value: 1500
 
 button:
+  # 寄存器 51: 应用波特率设置（读取 baud_rate_select 后写入，掉电保存，下次上电生效）
+  - platform: template
+    name: "baud_apply"
+    id: baud_apply
+    icon: "mdi:content-save"
+    on_press:
+      - lambda: |-
+          std::string opt = id(baud_rate_select).state;
+          uint16_t v = 1;
+          if (opt == "19200") v = 3;
+          else if (opt == "38400") v = 4;
+          else if (opt == "57600") v = 6;
+          else if (opt == "115200") v = 7;
+          auto cmd = esphome::modbus_controller::ModbusCommandItem::create_write_single_command(id(modbus_relay), 51, v);
+          id(modbus_relay)->queue_command(cmd);
+          ESP_LOGW("relay", "波特率已写入(掉电保存，下次上电生效)");
+
+  # 寄存器 204: 应用上电状态模式（读取 power_on_mode_select 后写入）
+  - platform: template
+    name: "power_apply"
+    id: power_apply
+    icon: "mdi:content-save"
+    on_press:
+      - lambda: |-
+          std::string opt = id(power_on_mode_select).state;
+          uint16_t v = 0;
+          if (opt == "全开") v = 1;
+          else if (opt == "恢复断电前状态") v = 2;
+          auto cmd = esphome::modbus_controller::ModbusCommandItem::create_write_single_command(id(modbus_relay), 204, v);
+          id(modbus_relay)->queue_command(cmd);
+          ESP_LOGI("relay", "上电状态模式: %d", (int) v);
+
   # 寄存器 202: 设置继电器吸合延时（μs，≤21666，掉电保存）
   - platform: template
     name: "pickup_delay_apply"
