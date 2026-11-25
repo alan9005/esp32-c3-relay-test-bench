@@ -25,6 +25,7 @@ esp32:
     type: esp-idf
 
 logger:
+  level: WARN
 
 api:
   encryption:
@@ -77,34 +78,6 @@ uart:
     stop_bits: 1
     parity: NONE
     rx_buffer_size: 256
-    # Modbus 收发原始帧打印到硬件 UART0（自定义调试输出）
-    debug:
-      direction: BOTH
-      after:
-        timeout: 20ms
-      sequence:
-        - lambda: |-
-            {
-              char buf[300];
-              int len = 0;
-              int remain = (int) sizeof(buf);
-              len += snprintf(buf, remain, "[MODBUS %s %dB]",
-                              direction == esphome::uart::UART_DIRECTION_TX ? "TX" : "RX",
-                              (int) bytes.size());
-              remain -= len;
-              if (remain < 0) remain = 0;
-              for (auto b : bytes) {
-                if (remain > 5) {
-                  int n = snprintf(buf + len, remain, " %02X", b);
-                  len += n;
-                  remain -= n;
-                }
-              }
-              if (remain > 3) {
-                len += snprintf(buf + len, remain, "\r\n");
-              }
-              uart_write_bytes((uart_port_t)0, buf, len);
-            }
 
 modbus:
   - uart_id: uart_1
@@ -120,8 +93,8 @@ modbus_controller:
     offline_skip_updates: 1
 
 interval:
-  # WiFi 连接后，每 5 秒从调试串口 UART0 输出本机 IP / MAC
-  - interval: 5s
+  # WiFi 连接后，定期从调试串口 UART0 输出本机 IP / MAC
+  - interval: 30s
     then:
       - lambda: |-
           if (esphome::wifi::global_wifi_component->is_connected()) {
@@ -161,8 +134,8 @@ interval:
             }
           }
 
-  # 性能测试状态机（100ms 轮询）
-  - interval: 100ms
+  # 性能测试状态机
+  - interval: 200ms
     then:
       - lambda: |-
           if (!id(test_running)) return;
@@ -727,7 +700,7 @@ sensor:
     name: "system_uptime"
     id: system_uptime
     type: seconds
-    update_interval: 3s
+    update_interval: 30s
 
   # ── 只读状态（保持寄存器 200~205） ──
   - platform: modbus_controller
