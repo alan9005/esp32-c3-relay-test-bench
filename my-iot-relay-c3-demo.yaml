@@ -435,6 +435,19 @@ select:
     initial_option: "9600"
     optimistic: true
 
+  # ESP 自身 485 总线波特率（运行时切换，重启后恢复 YAML 配置的 9600）
+  - platform: template
+    name: "esp_baud_select"
+    id: esp_baud_select
+    options:
+      - "9600"
+      - "19200"
+      - "38400"
+      - "57600"
+      - "115200"
+    initial_option: "9600"
+    optimistic: true
+
   # 寄存器 204: 0=全关 / 1=全开 / 2=恢复断电前状态
   # 仅选择不直接写入，由 power_apply 按钮读取后写入
   - platform: template
@@ -501,6 +514,23 @@ number:
     initial_value: 1500
 
 button:
+  # 切换 ESP 自身 485 波特率（运行时生效，重启后恢复 YAML 的 9600）
+  - platform: template
+    name: "esp_baud_apply"
+    id: esp_baud_apply
+    icon: "mdi:content-save"
+    on_press:
+      - lambda: |-
+          std::string opt = id(esp_baud_select).state;
+          uint32_t v = 9600;
+          if (opt == "19200") v = 19200;
+          else if (opt == "38400") v = 38400;
+          else if (opt == "57600") v = 57600;
+          else if (opt == "115200") v = 115200;
+          id(uart_1)->set_baud_rate(v);
+          id(uart_1)->load_settings();
+          ESP_LOGW("uart", "ESP 485 波特率已切换为 %u（重启后恢复 9600）", (unsigned) v);
+
   # 寄存器 51: 应用波特率设置（读取 baud_rate_select 后写入，掉电保存，下次上电生效）
   - platform: template
     name: "baud_apply"
