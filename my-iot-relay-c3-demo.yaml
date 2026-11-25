@@ -220,6 +220,8 @@ output:
   - platform: gpio
     pin: GPIO8
     id: net_status_led_gpio
+    # 板上 LED 为低电平点亮（sink），反转输出：light 开 → GPIO 输出低 → LED 亮
+    inverted: true
 
 light:
   - platform: binary
