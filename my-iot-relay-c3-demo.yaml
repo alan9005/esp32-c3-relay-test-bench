@@ -4,7 +4,8 @@
 #
 # 16 路继电器控制板（Modbus RTU 主站）
 #   - RS485 总线: TXD=GPIO21, RXD=GPIO20, 9600 8N1, 从站地址 100（请按实际 RS485 收发引脚/方向控制修改）
-#   - WiFi 连接后每 5 秒从调试串口输出本机 IP / MAC（当前自定义输出写入硬件 UART0，见下方说明）
+#     ⚠️ GPIO21/20 是 ESP32-C3 的 UART0 默认引脚，RS485 已占用 UART0；调试日志改走 USB_SERIAL_JTAG(原生 USB)
+#   - WiFi 连接后每 30 秒输出本机 IP / MAC（logger 输出到 USB_SERIAL_JTAG）
 #   - 普通 LED 网络状态灯: GPIO8（按闪烁频率指示）
 #       常亮 = WiFi 已连接 / 慢闪(1Hz) = 连接中 / 快闪(约4Hz) = AP 配网模式
 
@@ -25,7 +26,9 @@ esp32:
     type: esp-idf
 
 logger:
-  level: WARN
+  level: INFO
+  # GPIO21/20 已用于 RS485(UART0)，调试日志走原生 USB 串口
+  hardware_uart: USB_SERIAL_JTAG
 
 api:
   encryption:
@@ -46,12 +49,7 @@ wifi:
     password: "So6sCTVk4OAs"
   on_connect:
     - lambda: |-
-        {
-          char buffer[64];
-          memset(buffer, 0x00, sizeof(buffer));
-          snprintf(buffer, sizeof(buffer), "WiFi connected\r\n");
-          uart_write_bytes((uart_port_t)0, buffer, strlen(buffer));
-        }
+        ESP_LOGI("network", "WiFi connected");
         id(net_status_led).turn_on().set_effect("None").perform();
   on_disconnect:
     - lambda: |-
@@ -69,6 +67,7 @@ web_server:
 
 uart:
   # RS485 Modbus 总线（按用户要求使用 IO20/IO21）：TX=GPIO21, RX=GPIO20, 9600 8N1
+  # GPIO21/20 = ESP32-C3 的 UART0 默认引脚；logger 已改用 USB_SERIAL_JTAG，此处由 ESPHome 自动分配 UART0 给 RS485。
   # 如 RS485 收发器需要 DE/RE 控制，请补充 flow_control_pin 等配置并按硬件接线调整。
   - id: uart_1
     tx_pin: GPIO21
@@ -93,23 +92,13 @@ modbus_controller:
     offline_skip_updates: 1
 
 interval:
-  # WiFi 连接后，定期从调试串口 UART0 输出本机 IP / MAC
+  # WiFi 连接后，定期输出本机 IP / MAC（走 USB_SERIAL_JTAG 调试日志）
   - interval: 30s
     then:
       - lambda: |-
           if (esphome::wifi::global_wifi_component->is_connected()) {
-            {
-              char buffer[64];
-              memset(buffer, 0x00, sizeof(buffer));
-              snprintf(buffer, sizeof(buffer), "IP Address: %s\r\n", id(wifi_ip).state.c_str());
-              uart_write_bytes((uart_port_t)0, buffer, strlen(buffer));
-            }
-            {
-              char buffer[64];
-              memset(buffer, 0x00, sizeof(buffer));
-              snprintf(buffer, sizeof(buffer), "MAC Address: %s\r\n", id(wifi_mac).state.c_str());
-              uart_write_bytes((uart_port_t)0, buffer, strlen(buffer));
-            }
+            ESP_LOGI("network", "IP Address: %s", id(wifi_ip).state.c_str());
+            ESP_LOGI("network", "MAC Address: %s", id(wifi_mac).state.c_str());
           }
   # 网络状态灯状态机（1s 轮询，状态变化才刷新）
   - interval: 1s
@@ -234,7 +223,7 @@ output:
 
 light:
   - platform: binary
-    name: "网络状态灯"
+    name: "net_status_led"
     id: net_status_led
     output: net_status_led_gpio
     internal: true
@@ -627,6 +616,7 @@ script:
           id(test_running) = true;
           id(test_cycle_count) = 0;
           id(test_phase) = 0;
+          id(test_stop_reason) = 0;
           id(test_start_ms) = millis();
           id(test_phase_start_ms) = millis();
           // 先全部关闭，再进入循环
@@ -710,7 +700,6 @@ sensor:
     register_type: holding
     address: 200
     value_type: U_WORD
-    force_new_range: true
     skip_updates: 5
   - platform: modbus_controller
     modbus_controller_id: modbus_relay
@@ -720,7 +709,6 @@ sensor:
     address: 201
     value_type: U_WORD
     unit_of_measurement: "μs"
-    force_new_range: true
     skip_updates: 5
   - platform: modbus_controller
     modbus_controller_id: modbus_relay
@@ -730,7 +718,6 @@ sensor:
     address: 202
     value_type: U_WORD
     unit_of_measurement: "μs"
-    force_new_range: true
     skip_updates: 5
   - platform: modbus_controller
     modbus_controller_id: modbus_relay
@@ -740,7 +727,6 @@ sensor:
     address: 203
     value_type: U_WORD
     unit_of_measurement: "mA"
-    force_new_range: true
     skip_updates: 5
   - platform: modbus_controller
     modbus_controller_id: modbus_relay
@@ -749,7 +735,6 @@ sensor:
     register_type: holding
     address: 204
     value_type: U_WORD
-    force_new_range: true
     skip_updates: 5
   - platform: modbus_controller
     modbus_controller_id: modbus_relay
@@ -758,7 +743,6 @@ sensor:
     register_type: holding
     address: 205
     value_type: U_WORD
-    force_new_range: true
     skip_updates: 5
 
   # ── 性能测试状态 ──
