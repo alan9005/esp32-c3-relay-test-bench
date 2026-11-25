@@ -602,7 +602,8 @@ script:
             if (has_digit && num >= 1 && num <= 16) {
               mask |= (1u << (num - 1));
             }
-            while (i < s.size() && s[i] != ',') i++;
+            // 跳过该数字后直到下一个分隔符（空格或逗号），支持 "1,2,3" 与 "1 2 3"
+            while (i < s.size() && s[i] != ' ' && s[i] != ',') i++;
           }
           if (mask == 0) {
             ESP_LOGW("relay_test", "请选择至少一个继电器");
