@@ -90,6 +90,16 @@ modbus_controller:
     update_interval: 5s
     command_throttle: 50ms
     offline_skip_updates: 1
+    # 开机首次上线 / 485 断连重连后，主动读取一次全部状态寄存器 200~205
+    on_online:
+      then:
+        - lambda: |-
+            for (uint16_t a = 200; a <= 205; a++) {
+              auto cmd = esphome::modbus_controller::ModbusCommandItem::create_read_command(
+                  id(modbus_relay), esphome::modbus_controller::ModbusRegisterType::HOLDING, a, 1);
+              id(modbus_relay)->queue_command(cmd);
+            }
+            ESP_LOGI("relay", "485 已连接，读取状态寄存器 200~205");
 
 interval:
   # WiFi 连接后，定期输出本机 IP / MAC（走 USB_SERIAL_JTAG 调试日志）
@@ -553,6 +563,20 @@ button:
           id(modbus_relay)->queue_command(cmd);
           ESP_LOGI("relay", "触发继电器延时自检");
 
+  # 手动读取一次状态寄存器 200~205（刷新 firmware_version / power_on_mode / config_index 等静态值）
+  - platform: template
+    name: "read_status"
+    id: read_status
+    icon: "mdi:refresh"
+    on_press:
+      - lambda: |-
+          for (uint16_t a = 200; a <= 205; a++) {
+            auto cmd = esphome::modbus_controller::ModbusCommandItem::create_read_command(
+                id(modbus_relay), esphome::modbus_controller::ModbusRegisterType::HOLDING, a, 1);
+            id(modbus_relay)->queue_command(cmd);
+          }
+          ESP_LOGI("relay", "手动读取状态寄存器 200~205");
+
   # ── 性能测试控制 ──
   - platform: template
     name: "test_start"
@@ -705,7 +729,7 @@ sensor:
     address: 200
     value_type: U_WORD
     force_new_range: true
-    skip_updates: 5
+    skip_updates: 60000  # 静态值：开机/重连/手动读取时刷新，不参与定时轮询
   - platform: modbus_controller
     modbus_controller_id: modbus_relay
     name: "ac_period"
@@ -744,7 +768,7 @@ sensor:
     address: 204
     value_type: U_WORD
     force_new_range: true
-    skip_updates: 5
+    skip_updates: 60000  # 静态值：开机/重连/手动读取时刷新，不参与定时轮询
   - platform: modbus_controller
     modbus_controller_id: modbus_relay
     name: "config_index"
@@ -753,7 +777,7 @@ sensor:
     address: 205
     value_type: U_WORD
     force_new_range: true
-    skip_updates: 5
+    skip_updates: 60000  # 静态值：开机/重连/手动读取时刷新，不参与定时轮询
 
   # ── 性能测试状态 ──
   - platform: template
