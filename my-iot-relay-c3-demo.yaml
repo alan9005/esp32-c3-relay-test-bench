@@ -561,6 +561,10 @@ button:
           else if (opt == "恢复断电前状态") v = 2;
           auto cmd = esphome::modbus_controller::ModbusCommandItem::create_write_single_command(id(modbus_relay), 204, v);
           id(modbus_relay)->queue_command(cmd);
+          // 写入后立即回读 204，及时刷新页面上的上电状态
+          auto read_cmd = esphome::modbus_controller::ModbusCommandItem::create_read_command(
+              id(modbus_relay), esphome::modbus_controller::ModbusRegisterType::HOLDING, 204, 1);
+          id(modbus_relay)->queue_command(read_cmd);
           ESP_LOGI("relay", "上电状态模式: %d", (int) v);
 
   # 寄存器 202: 设置继电器吸合延时（μs，≤21666，掉电保存）
@@ -577,6 +581,10 @@ button:
           }
           auto cmd = esphome::modbus_controller::ModbusCommandItem::create_write_single_command(id(modbus_relay), 202, (uint16_t) us);
           id(modbus_relay)->queue_command(cmd);
+          // 写入后立即回读 202，及时刷新页面上的吸合延时状态
+          auto read_cmd = esphome::modbus_controller::ModbusCommandItem::create_read_command(
+              id(modbus_relay), esphome::modbus_controller::ModbusRegisterType::HOLDING, 202, 1);
+          id(modbus_relay)->queue_command(read_cmd);
           ESP_LOGI("relay", "写入吸合延时: %d μs", us);
 
   # 寄存器 400~415: 继电器延时动作（先吸合，延时=值×0.1s 后自动释放）
@@ -611,6 +619,8 @@ button:
           auto cmd = esphome::modbus_controller::ModbusCommandItem::create_write_single_command(id(modbus_relay), 999, 999);
           id(modbus_relay)->queue_command(cmd);
           ESP_LOGI("relay", "触发继电器延时自检");
+      # 自检需要时间，延迟回读吸合延时状态
+      - script.execute: read_pickup_delay_after_selftest
 
   # 手动读取一次状态寄存器 200~205（刷新 firmware_version / power_on_mode / config_index 等静态值）
   - platform: template
@@ -654,6 +664,16 @@ text:
     initial_value: "1"
 
 script:
+  # 自检完成后延迟回读吸合延时（自检需要时间，稍等再读）
+  - id: read_pickup_delay_after_selftest
+    then:
+      - delay: 2s
+      - lambda: |-
+          auto read_cmd = esphome::modbus_controller::ModbusCommandItem::create_read_command(
+              id(modbus_relay), esphome::modbus_controller::ModbusRegisterType::HOLDING, 202, 1);
+          id(modbus_relay)->queue_command(read_cmd);
+          ESP_LOGI("relay", "自检完成，回读吸合延时");
+
   - id: relay_test_start
     then:
       - lambda: |-
