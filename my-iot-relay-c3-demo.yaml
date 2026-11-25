@@ -403,23 +403,6 @@ switch:
     restore_mode: DISABLED
     icon: "mdi:toggle-switch"
 
-  # ── 全部继电器开关（寄存器 52: 0=全关 / 1=全开） ──
-  - platform: template
-    name: "all_relays"
-    id: all_relays
-    icon: "mdi:power"
-    optimistic: true
-    on_turn_on:
-      - lambda: |-
-          auto cmd = esphome::modbus_controller::ModbusCommandItem::create_write_single_command(id(modbus_relay), 52, 1);
-          id(modbus_relay)->queue_command(cmd);
-          ESP_LOGI("relay", "全部继电器: 开");
-    on_turn_off:
-      - lambda: |-
-          auto cmd = esphome::modbus_controller::ModbusCommandItem::create_write_single_command(id(modbus_relay), 52, 0);
-          id(modbus_relay)->queue_command(cmd);
-          ESP_LOGI("relay", "全部继电器: 关");
-
 select:
   # 寄存器 51: 1=9600 / 3=19200 / 4=38400 / 6=57600 / 7=115200
   # 仅选择不直接写入，由 baud_apply 按钮读取后写入
@@ -514,6 +497,28 @@ number:
     initial_value: 1500
 
 button:
+  # 全部继电器开（寄存器 52: 写 1）
+  - platform: template
+    name: "all_relays_on"
+    id: all_relays_on
+    icon: "mdi:power"
+    on_press:
+      - lambda: |-
+          auto cmd = esphome::modbus_controller::ModbusCommandItem::create_write_single_command(id(modbus_relay), 52, 1);
+          id(modbus_relay)->queue_command(cmd);
+          ESP_LOGI("relay", "全部继电器: 开");
+
+  # 全部继电器关（寄存器 52: 写 0）
+  - platform: template
+    name: "all_relays_off"
+    id: all_relays_off
+    icon: "mdi:power-off"
+    on_press:
+      - lambda: |-
+          auto cmd = esphome::modbus_controller::ModbusCommandItem::create_write_single_command(id(modbus_relay), 52, 0);
+          id(modbus_relay)->queue_command(cmd);
+          ESP_LOGI("relay", "全部继电器: 关");
+
   # 切换 ESP 自身 485 波特率（运行时生效，重启后恢复 YAML 的 9600）
   - platform: template
     name: "esp_baud_apply"
