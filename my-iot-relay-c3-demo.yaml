@@ -696,6 +696,7 @@ sensor:
     update_interval: 30s
 
   # ── 只读状态（保持寄存器 200~205） ──
+  # ⚠️ 该板不支持 FC03 连续读取多个寄存器，必须 force_new_range 逐个单独读取（200~205 不能合并）
   - platform: modbus_controller
     modbus_controller_id: modbus_relay
     name: "firmware_version"
@@ -703,6 +704,7 @@ sensor:
     register_type: holding
     address: 200
     value_type: U_WORD
+    force_new_range: true
     skip_updates: 5
   - platform: modbus_controller
     modbus_controller_id: modbus_relay
@@ -712,6 +714,7 @@ sensor:
     address: 201
     value_type: U_WORD
     unit_of_measurement: "μs"
+    force_new_range: true
     skip_updates: 5
   - platform: modbus_controller
     modbus_controller_id: modbus_relay
@@ -721,6 +724,7 @@ sensor:
     address: 202
     value_type: U_WORD
     unit_of_measurement: "μs"
+    force_new_range: true
     skip_updates: 5
   - platform: modbus_controller
     modbus_controller_id: modbus_relay
@@ -730,6 +734,7 @@ sensor:
     address: 203
     value_type: U_WORD
     unit_of_measurement: "mA"
+    force_new_range: true
     skip_updates: 5
   - platform: modbus_controller
     modbus_controller_id: modbus_relay
@@ -738,6 +743,7 @@ sensor:
     register_type: holding
     address: 204
     value_type: U_WORD
+    force_new_range: true
     skip_updates: 5
   - platform: modbus_controller
     modbus_controller_id: modbus_relay
@@ -746,6 +752,7 @@ sensor:
     register_type: holding
     address: 205
     value_type: U_WORD
+    force_new_range: true
     skip_updates: 5
 
   # ── 性能测试状态 ──
