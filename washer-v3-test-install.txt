@@ -1,0 +1,9 @@
+INFO ESPHome 2026.6.4
+INFO Reading configuration /config/washer-v3-test.yaml...
+Failed config
+
+ota.web_server: [source /config/washer-v3-test.yaml:82]
+  platform: web_server
+  
+  [password] is an invalid option for [ota.web_server]. Please check the indentation.
+  password: f214a13cc04c52ae96d1acea40fc94fd

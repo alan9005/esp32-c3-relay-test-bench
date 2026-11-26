@@ -1,0 +1,487 @@
+/* =============================================================================
+ * 继电器控制板 — 简洁 Web 控制页样式
+ * ========================================================================== */
+
+/* 隐藏 ESPHome 默认页面元素（本页面由 relay_dashboard.js 重建） */
+body > *:not(#dashboard):not(script):not(style):not(link) {
+  display: none !important;
+}
+
+:root {
+  --bg: #f4f6f9;
+  --card: #ffffff;
+  --border: #e4e8ee;
+  --text: #1f2937;
+  --muted: #6b7280;
+  --green: #16a34a;
+  --green-bg: #dcfce7;
+  --red: #dc2626;
+  --red-bg: #fee2e2;
+  --blue: #2563eb;
+  --amber: #d97706;
+  --amber-bg: #fef3c7;
+  --radius: 14px;
+  --shadow: 0 1px 2px rgba(16, 24, 40, 0.04), 0 4px 16px rgba(16, 24, 40, 0.06);
+}
+
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+html {
+  font-size: 15px;
+}
+
+body {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC',
+    'Microsoft YaHei', 'Noto Sans SC', 'Helvetica Neue', Arial, sans-serif;
+  background: var(--bg);
+  color: var(--text);
+  line-height: 1.55;
+  min-height: 100vh;
+}
+
+#dashboard {
+  max-width: 1080px;
+  margin: 0 auto;
+  padding: 20px 16px 32px;
+}
+
+/* ---- 顶栏 ---- */
+.topbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  flex-wrap: wrap;
+  margin-bottom: 20px;
+}
+
+.brand {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.brand-icon {
+  width: 44px;
+  height: 44px;
+  border-radius: 12px;
+  background: linear-gradient(135deg, #2563eb, #16a34a);
+  color: #fff;
+  font-size: 20px;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.brand h1 {
+  font-size: 1.35rem;
+  font-weight: 700;
+}
+
+.brand p {
+  font-size: 0.8rem;
+  color: var(--muted);
+}
+
+.conn {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 14px;
+  border-radius: 999px;
+  font-size: 0.85rem;
+  font-weight: 600;
+  background: #fff;
+  border: 1px solid var(--border);
+}
+
+.conn-dot {
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  background: #9ca3af;
+}
+
+.conn.online .conn-dot {
+  background: var(--green);
+  box-shadow: 0 0 0 3px var(--green-bg);
+}
+
+.conn.offline .conn-dot {
+  background: var(--red);
+  box-shadow: 0 0 0 3px var(--red-bg);
+}
+
+/* ---- 卡片 ---- */
+.card {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+  padding: 20px;
+  margin-bottom: 18px;
+}
+
+.card h2 {
+  font-size: 1rem;
+  font-weight: 700;
+  margin-bottom: 16px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.card h2::before {
+  content: '';
+  width: 4px;
+  height: 16px;
+  border-radius: 2px;
+  background: var(--blue);
+}
+
+.card-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.card-head h2 {
+  margin-bottom: 0;
+}
+
+.card-actions {
+  display: flex;
+  gap: 8px;
+}
+
+/* ---- 键值对 ---- */
+.kv-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 12px;
+}
+
+.kv {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  padding: 12px 14px;
+  border-radius: 10px;
+  background: #f8fafc;
+  border: 1px solid var(--border);
+}
+
+.kv-label {
+  color: var(--muted);
+  font-size: 0.82rem;
+  white-space: nowrap;
+}
+
+.kv-value {
+  font-weight: 650;
+  font-size: 0.95rem;
+  overflow-wrap: anywhere;
+}
+
+.kv-value.mono {
+  font-family: 'SF Mono', 'Fira Code', 'Cascadia Code', Consolas, monospace;
+  font-size: 0.86rem;
+}
+
+.kv-unit {
+  color: var(--muted);
+  font-size: 0.78rem;
+}
+
+/* ---- 继电器网格 ---- */
+.relay-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(110px, 1fr));
+  gap: 14px;
+}
+
+.relay {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  padding: 14px 8px;
+  border-radius: 12px;
+  border: 1px solid var(--border);
+  background: #fafbfc;
+  transition: background 0.15s ease, border-color 0.15s ease;
+}
+
+.relay.active {
+  background: var(--green-bg);
+  border-color: #bbf7d0;
+}
+
+.relay-btn {
+  width: 56px;
+  height: 56px;
+  border-radius: 50%;
+  border: none;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background 0.15s ease, transform 0.1s ease;
+  background: #e5e7eb;
+}
+
+.relay-btn:active {
+  transform: scale(0.94);
+}
+
+.relay-btn .dot {
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  background: #9ca3af;
+  transition: background 0.15s ease;
+}
+
+.relay-btn.on {
+  background: var(--green);
+}
+
+.relay-btn.on .dot {
+  background: #fff;
+}
+
+.relay-label {
+  font-size: 0.82rem;
+  font-weight: 600;
+}
+
+.relay-state {
+  font-size: 0.75rem;
+  color: var(--muted);
+}
+
+.relay.active .relay-state {
+  color: var(--green);
+  font-weight: 700;
+}
+
+/* ---- 设置表单 ---- */
+.settings-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(230px, 1fr));
+  gap: 14px;
+  align-items: end;
+}
+
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.field .btn {
+  align-self: flex-start;
+}
+
+.field span {
+  font-size: 0.8rem;
+  color: var(--muted);
+}
+
+.field select,
+.field input {
+  padding: 9px 12px;
+  border: 1px solid var(--border);
+  border-radius: 9px;
+  font-size: 0.9rem;
+  background: #fff;
+  color: var(--text);
+  outline: none;
+}
+
+.field select:focus,
+.field input:focus {
+  border-color: var(--blue);
+  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.12);
+}
+
+.field-btn {
+  justify-content: flex-end;
+}
+
+/* ---- 按钮 ---- */
+.btn {
+  padding: 9px 16px;
+  border: none;
+  border-radius: 9px;
+  font-size: 0.86rem;
+  font-weight: 650;
+  cursor: pointer;
+  color: #fff;
+  transition: filter 0.12s ease, transform 0.1s ease;
+}
+
+.btn:active {
+  transform: scale(0.97);
+}
+
+.btn-green { background: var(--green); }
+.btn-red   { background: var(--red); }
+.btn-blue  { background: var(--blue); }
+.btn-amber { background: var(--amber); }
+
+.btn:hover {
+  filter: brightness(0.95);
+}
+
+.btn-small {
+  padding: 5px 12px;
+  font-size: 0.75rem;
+  border-radius: 7px;
+  background: #64748b;
+}
+
+/* ---- 性能测试 ---- */
+.test-relays {
+  margin-top: 14px;
+  padding: 14px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: #f8fafc;
+}
+
+.test-relays-head {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 12px;
+  font-size: 0.82rem;
+  font-weight: 650;
+  color: var(--text);
+}
+
+.chk-grid {
+  display: grid;
+  grid-template-columns: repeat(8, 1fr);
+  gap: 8px;
+}
+
+.chk {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.8rem;
+  cursor: pointer;
+  user-select: none;
+}
+
+.chk input {
+  accent-color: var(--blue);
+  width: 15px;
+  height: 15px;
+  cursor: pointer;
+}
+
+.test-status {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 18px;
+  margin-top: 14px;
+  padding-top: 12px;
+  border-top: 1px solid var(--border);
+  font-size: 0.86rem;
+  color: var(--muted);
+}
+
+.test-status b {
+  color: var(--text);
+  font-weight: 700;
+}
+
+/* ---- OTA ---- */
+.ota-row {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.ota-row form {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+.ota-row input[type="file"] {
+  font-size: 0.85rem;
+}
+
+.ota-hint {
+  color: var(--muted);
+  font-size: 0.8rem;
+}
+
+.hint {
+  color: var(--muted);
+  font-size: 0.8rem;
+}
+
+/* ---- 语言切换 ---- */
+.topbar-right {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.lang-btn {
+  padding: 6px 14px;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: var(--text);
+  background: #fff;
+  cursor: pointer;
+}
+
+.lang-btn:hover {
+  border-color: var(--blue);
+  color: var(--blue);
+}
+
+/* ---- 页脚 ---- */
+footer {
+  text-align: center;
+  color: var(--muted);
+  font-size: 0.78rem;
+  padding: 10px 0;
+}
+
+/* ---- 响应式 ---- */
+@media (max-width: 640px) {
+  .relay-grid {
+    grid-template-columns: repeat(auto-fill, minmax(88px, 1fr));
+    gap: 10px;
+  }
+  .relay-btn {
+    width: 48px;
+    height: 48px;
+  }
+  .topbar {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+  .chk-grid {
+    grid-template-columns: repeat(4, 1fr);
+  }
+  .kv-grid {
+    grid-template-columns: 1fr;
+  }
+}

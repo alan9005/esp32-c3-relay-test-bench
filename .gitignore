@@ -9,3 +9,17 @@ build/
 
 # 临时调试日志
 column-install.txt
+
+# 敏感配置（真实 WiFi 密码，不要提交）
+secrets.yaml
+
+# PlatformIO 编译缓存
+.platformio/
+
+# Python 缓存
+__pycache__/
+*.pyc
+
+# 本地编辑器 / 工具状态
+.device-builder*
+.DS_Store
