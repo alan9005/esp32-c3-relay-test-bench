@@ -50,8 +50,7 @@ The **ESP32-C3** acts as the Modbus master, controlling 16 relay outputs over an
 
 ```
 .
-├── my-iot-relay-c3-demo.yaml      # ESP32-C3 relay test bench config (recommended)
-├── my-iot-relay-demo.yaml         # ESP32-S3 variant
+├── my-iot-relay-c3-demo.yaml      # ESP32-C3 relay test bench config
 ├── web/
 │   ├── relay_dashboard.js         # Web control panel (bilingual)
 │   └── relay_dashboard.css        # Panel styles

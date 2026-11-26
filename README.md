@@ -50,8 +50,7 @@
 
 ```
 .
-├── my-iot-relay-c3-demo.yaml      # ESP32-C3 继电器测试台主配置（推荐）
-├── my-iot-relay-demo.yaml         # ESP32-S3 版本（C3 版本由此适配）
+├── my-iot-relay-c3-demo.yaml      # ESP32-C3 继电器测试台主配置
 ├── web/
 │   ├── relay_dashboard.js         # 网页控制面板（中英双语）
 │   └── relay_dashboard.css        # 面板样式
