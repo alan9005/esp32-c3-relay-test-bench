@@ -178,4 +178,6 @@ esphome run my-iot-relay-c3-demo.yaml
 
 ## 九、许可
 
-本项目供学习、测试与二次开发使用。继电器板卡硬件与 Modbus 协议版权归原厂商所有。
+本项目代码采用 [MIT License](LICENSE) 开源，可自由使用、修改与分发。
+
+> 继电器板卡的硬件设计与 Modbus 协议版权归原厂商所有。
