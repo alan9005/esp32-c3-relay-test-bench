@@ -57,8 +57,8 @@ The **ESP32-C3** acts as the Modbus master, controlling 16 relay outputs over an
 │   └── relay_dashboard.css        # Panel styles
 ├── 继电器控制板-485接口说明.md     # Full Modbus register reference (Chinese)
 ├── secrets.example.yaml           # WiFi config template
-├── CHANGELOG.md
-└── ...
+├── README.md                      # Chinese README
+└── LICENSE                        # MIT License
 ```
 
 ---
@@ -161,7 +161,7 @@ The relay board is a standard **Modbus RTU slave** and can be used independently
 
 1. **PLC / industrial systems**: write relays with FC 0x06 and read status with FC 0x03.
 2. **Home Assistant**: import the entities (switch / sensor / select / button) from `my-iot-relay-c3-demo.yaml`.
-3. **Custom IoT gateway**: see `iot-gateway.yaml`.
+3. **Custom IoT gateway**: read/write relays directly via the register map.
 4. **Custom UI**: `web/relay_dashboard.js` uses the ESPHome REST API + SSE; adapt it to your own frontend.
 
 ---

@@ -57,8 +57,8 @@
 │   └── relay_dashboard.css        # 面板样式
 ├── 继电器控制板-485接口说明.md     # 模块 Modbus 寄存器完整说明
 ├── secrets.example.yaml           # WiFi 配置示例（复制为 secrets.yaml 使用）
-├── CHANGELOG.md                   # 变更记录
-└── ...                            # 其他项目文件（washer / gateway 等）
+├── README.en.md                   # English README
+└── LICENSE                        # MIT 许可证
 ```
 
 ---
@@ -163,7 +163,7 @@ esphome run my-iot-relay-c3-demo.yaml
 
 1. **接入现有 PLC / 工控系统**：按寄存器表用功能码 0x06 写继电器、0x03 读状态即可。
 2. **接入 Home Assistant**：将 `my-iot-relay-c3-demo.yaml` 中的实体（switch / sensor / select / button）直接同步到 Home Assistant，作为智能家居执行器使用。
-3. **接入自建物联网网关**：参考 `iot-gateway.yaml`，把继电器控制集成进网关逻辑。
+3. **接入自建物联网网关**：直接按寄存器表读写继电器，即可集成进任意网关 / 主控逻辑。
 4. **自定义前端**：`web/relay_dashboard.js` 通过 ESPHome 的 REST API 与 SSE 通信，可按需改造为自己的 UI。
 
 ---
